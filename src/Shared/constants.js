@@ -41,13 +41,14 @@ export const INIT_TEAMS = [
 export const GLOBAL_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
   :root {
-    --bg:#0a0a0f; --surface:#12121a; --surface2:#1a1a26; --border:#2a2a40;
+    --sans: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --mono: 'JetBrains Mono', 'Noto Sans KR';
+    --bg: #0a0b14;--surface: #161827;--surface2:#1a1a26;--border:#2a2a40;
     --accent:#6c63ff; --accent2:#00d4aa; --accent3:#ff6b6b; --gold:#ffd700;
     --text:#e8e8f0; --text2:#8888aa; --green:#00ff88; --orange:#ff9500;
-    --mono:'Space Mono',monospace; --sans:'Noto Sans KR',sans-serif;
   }
   *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-  body { background:var(--bg); color:var(--text); font-family:var(--sans); overflow:hidden; }
+  body { background:var(--bg); color:var(--text); font-family:var(--sans); overflow:hidden; -webkit-font-smoothing: antialiased;}
   #root { height:100vh; display:flex; flex-direction:column; }
   ::-webkit-scrollbar { width:4px; }
   ::-webkit-scrollbar-track { background:transparent; }
@@ -73,6 +74,9 @@ export const GLOBAL_CSS = `
     box-shadow:0 0 8px var(--green); animation:livepulse 2s infinite; flex-shrink:0;
   }
   .anim-float { animation:float 3s ease-in-out infinite; }
+  .math-text, .timer, .score {
+    font-family: var(--mono) !important;
+  }
 `;
 
 export const pad = (n) => String(n).padStart(2, "0");

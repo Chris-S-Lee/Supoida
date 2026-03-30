@@ -3,6 +3,61 @@ import { ROOMS_DATA, CORRIDORS, MY_TEAM_ID, CONFETTI_COLORS, pad, isRoomUnlocked
 import { Header, Leaderboard, Toast, GridBg } from "../shared/components.jsx";
 import { useSharedStore } from "../shared/store.js";
 
+// ── 1. 로그인 전용 페이지 ──────────────────────────────────────────────
+function LoginPage({ onLogin }) {
+  const [name, setName] = useState("");
+
+  const handleStart = () => {
+    if (name.trim()) onLogin(name.trim());
+  };
+
+  return (
+    <div style={{ 
+      position: "fixed", inset: 0, background: "#0a0b14", zIndex: 1000,
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" 
+    }}>
+      <GridBg />
+      <div style={{ textAlign: "center", zIndex: 1, animation: "modalIn 0.6s ease-out" }}>
+        <div style={{ fontSize: 64, marginBottom: 20 }}>🗝️</div>
+        <h1 style={{ 
+          fontFamily: "var(--mono)", letterSpacing: 8, color: "#fff", 
+          margin: "0 0 10px 0", fontSize: 42, fontWeight: 800 
+        }}>MATH ESCAPE</h1>
+        <p style={{ color: "var(--accent2)", fontFamily: "var(--mono)", marginBottom: 40, fontSize: 14 }}>
+          READY TO SOLVE THE PUZZLE?
+        </p>
+        
+        <div style={{ display: "flex", gap: 12, background: "rgba(255,255,255,0.05)", padding: 20, borderRadius: 16, border: "1px solid var(--border)" }}>
+          <input 
+            autoFocus
+            value={name} 
+            onChange={e => setName(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleStart()}
+            placeholder="팀 이름을 입력하세요..." 
+            style={{ 
+              background: "var(--bg)", border: "1px solid var(--border)", 
+              padding: "15px 20px", borderRadius: 8, color: "#fff", 
+              fontFamily: "var(--mono)", outline: "none", width: 280, fontSize: 16
+            }} 
+          />
+          <button 
+            onClick={handleStart}
+            style={{ 
+              background: "var(--accent)", color: "#fff", border: "none", 
+              padding: "0 30px", borderRadius: 8, cursor: "pointer", 
+              fontWeight: 700, fontSize: 16, transition: "0.2s"
+            }}
+            onMouseEnter={e => e.target.style.filter = "brightness(1.2)"}
+            onMouseLeave={e => e.target.style.filter = "brightness(1)"}
+          >
+            START
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Minimap ───────────────────────────────────────────────────────────────────
 function Minimap({ solvedRooms, currentRoomId, onRoomClick }) {
   const MAP_W = 750, MAP_H = 420;
@@ -172,90 +227,99 @@ function Celebration({ room, pts, totalScore, onClose }) {
   );
 }
 
-// ── ClientApp ─────────────────────────────────────────────────────────────────
+// ── 2. 메인 게임 페이지 ──────────────────────────────────────────────
 export default function ClientApp() {
-  const { state, solveRoom, moveTeam, simulateTick, setTimerRunning, tickTimer, resetAll } = useSharedStore();
+  const { state, solveRoom, moveTeam, setTimerRunning, updateTeamName, resetAll } = useSharedStore();
   const { teams, timerSec, timerRunning } = state;
 
-  const myTeam = teams.find(t => t.id === MY_TEAM_ID);
-  const solvedRooms = myTeam.roomsDone;
+  // 내 팀 데이터 안전하게 가져오기
+  const myTeam = teams?.find(t => t.id === MY_TEAM_ID);
+
+  // 로그인 여부 결정 (이름이 "우리 팀"이 아니면 로그인된 것으로 간주)
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // 초기 로드 시 체크
+  useEffect(() => {
+    if (myTeam && myTeam.name !== "우리 팀" && myTeam.name !== "") {
+      setIsLoggedIn(true);
+    }
+  }, [myTeam]);
 
   const [currentRoomId, setCurrentRoomId] = useState(0);
   const [activeRoomId, setActiveRoomId]     = useState(null);
   const [celebration, setCelebration]       = useState(null);
   const [toast, setToast]                   = useState(null);
 
-  // Timer tick (only this tab drives the timer to avoid conflicts)
-  useEffect(() => {
-    if (!timerRunning) return;
-    const id = setInterval(tickTimer, 1000);
-    return () => clearInterval(id);
-  }, [timerRunning, tickTimer]);
+  if (!myTeam) return null; // 데이터 로딩 전에는 아무것도 안 그림
 
-  // Simulate other teams
-  useEffect(() => {
-    const id = setInterval(() => simulateTick(ROOMS_DATA), 8000);
-    return () => clearInterval(id);
-  }, [simulateTick]);
-
-  const showToast = useCallback((msg) => setToast(msg), []);
-
-  const handleRoomClick = useCallback((roomId) => {
-    const unlocked = isRoomUnlocked(roomId, solvedRooms);
-    if (!unlocked) { showToast("이전 방을 먼저 클리어하세요! 🔒"); return; }
-    setCurrentRoomId(roomId);
-    moveTeam(MY_TEAM_ID, roomId);
-    if (solvedRooms.includes(roomId)) { showToast("이미 클리어한 방입니다! ✅"); }
-    else { setActiveRoomId(roomId); }
-  }, [solvedRooms, showToast, moveTeam]);
-
-  const handleSolve = useCallback((room, pts) => {
-    solveRoom(MY_TEAM_ID, room.id, pts);
-    setCelebration({ room, pts, total: myTeam.score + pts });
-  }, [solveRoom, myTeam.score]);
-
-  const handleReset = () => {
-    if (!window.confirm("게임을 리셋하시겠습니까?")) return;
-    resetAll();
-    setCurrentRoomId(0);
-    setActiveRoomId(null);
-    setCelebration(null);
+  const handleLogin = (name) => {
+    updateTeamName(MY_TEAM_ID, name);
+    setIsLoggedIn(true);
   };
 
+  const handleRoomClick = (id) => {
+    if (myTeam.roomsDone.includes(id)) {
+      setToast("이미 클리어한 방입니다.");
+      return;
+    }
+    setActiveRoomId(id);
+  };
+
+  const handleSolve = (answer) => {
+    const room = ROOMS_DATA[activeRoomId];
+    if (answer.trim() === room.answer) {
+      solveRoom(MY_TEAM_ID, activeRoomId);
+      setCelebration({ room, pts: room.points, total: myTeam.score + room.points });
+      setActiveRoomId(null);
+      if (activeRoomId < ROOMS_DATA.length - 1) {
+        setCurrentRoomId(activeRoomId + 1);
+        moveTeam(MY_TEAM_ID, activeRoomId + 1);
+      }
+    } else {
+      setToast("오답입니다! 다시 생각해보세요.");
+    }
+  };
+
+  // 1단계: 로그인이 안 되어 있으면 로그인 페이지만 렌더링
+  if (!isLoggedIn) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
+
+  // 2단계: 로그인 후 게임 화면
   const activeRoom = activeRoomId !== null ? ROOMS_DATA[activeRoomId] : null;
 
   return (
-    <>
-      <Header
-        timerSec={timerSec}
-        timerRunning={timerRunning}
-        onToggleTimer={() => setTimerRunning(!timerRunning)}
-        onReset={handleReset}
-        rightSlot={
-          <a href="?view=manager" target="_blank" rel="noreferrer" style={{ fontFamily:"var(--mono)", fontSize:10, letterSpacing:1, padding:"6px 14px", border:"1px solid var(--border)", borderRadius:4, color:"var(--text2)", textDecoration:"none" }}>
-            ⚙ 매니저
-          </a>
-        }
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "var(--bg)" }}>
+      <Header 
+        timerSec={timerSec} 
+        timerRunning={timerRunning} 
+        onToggleTimer={() => setTimerRunning(!timerRunning)} 
+        onReset={() => confirm("모든 기록을 삭제할까요?") && resetAll()}
       />
 
-      <div style={{ display:"grid", gridTemplateColumns:"300px 1fr", flex:1, overflow:"hidden" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", flex: 1, overflow: "hidden" }}>
         <Leaderboard teams={teams} />
 
-        <div style={{ display:"flex", flexDirection:"column", overflow:"hidden", background:"var(--bg)", position:"relative" }}>
-          <div style={{ padding:"16px 24px 0", display:"flex", alignItems:"center", gap:12, flexShrink:0 }}>
-            <span style={{ fontFamily:"var(--mono)", fontSize:11, letterSpacing:3, color:"var(--text2)" }}>MINIMAP — 현재 위치를 클릭하여 문제 풀기</span>
-            <span style={{ fontFamily:"var(--mono)", fontSize:12, padding:"4px 12px", background:"rgba(0,212,170,0.12)", border:"1px solid rgba(0,212,170,0.3)", borderRadius:20, color:"var(--accent2)" }}>
-              우리 팀 점수: {myTeam.score}
+        <div style={{ display: "flex", flexDirection: "column", overflow: "hidden", background: "var(--bg)", position: "relative" }}>
+          <div style={{ padding: "16px 24px 0", display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+            <span style={{ fontFamily: "var(--mono)", fontSize: 11, letterSpacing: 3, color: "var(--text2)" }}>WORLD MAP</span>
+            <span style={{ 
+              fontFamily: "var(--mono)", fontSize: 12, padding: "4px 12px", 
+              background: "rgba(0,212,170,0.12)", border: "1px solid rgba(0,212,170,0.3)", 
+              borderRadius: 20, color: "var(--accent2)" 
+            }}>
+              {myTeam.name} : {myTeam.score} PTS
             </span>
           </div>
 
-          <Minimap solvedRooms={solvedRooms} currentRoomId={currentRoomId} onRoomClick={handleRoomClick} />
+          {/* Minimap 컴포넌트는 components.jsx에 있거나 ClientApp 상단에 정의되어 있어야 함 */}
+          <Minimap solvedRooms={myTeam.roomsDone} currentRoomId={currentRoomId} onRoomClick={handleRoomClick} />
         </div>
       </div>
 
       {activeRoom && <ProblemModal room={activeRoom} onClose={() => setActiveRoomId(null)} onSolve={handleSolve} />}
       {celebration && <Celebration room={celebration.room} pts={celebration.pts} totalScore={celebration.total} onClose={() => setCelebration(null)} />}
       {toast && <Toast msg={toast} onDone={() => setToast(null)} />}
-    </>
+    </div>
   );
 }
