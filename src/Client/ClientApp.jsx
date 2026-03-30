@@ -229,36 +229,51 @@ function Celebration({ room, pts, totalScore, onClose }) {
 
 // ── 2. 메인 게임 페이지 ──────────────────────────────────────────────
 export default function ClientApp() {
+  // 1. 모든 Hook은 무조건 최상단!
   const { state, solveRoom, moveTeam, setTimerRunning, updateTeamName, resetAll } = useSharedStore();
-  const { teams, timerSec, timerRunning } = state;
-
-  // 내 팀 데이터 안전하게 가져오기
-  const myTeam = teams?.find(t => t.id === MY_TEAM_ID);
-
-  // 로그인 여부 결정 (이름이 "우리 팀"이 아니면 로그인된 것으로 간주)
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  // 초기 로드 시 체크
-  useEffect(() => {
-    if (myTeam && myTeam.name !== "우리 팀" && myTeam.name !== "") {
-      setIsLoggedIn(true);
-    }
-  }, [myTeam]);
-
   const [currentRoomId, setCurrentRoomId] = useState(0);
   const [activeRoomId, setActiveRoomId]     = useState(null);
   const [celebration, setCelebration]       = useState(null);
   const [toast, setToast]                   = useState(null);
 
-  if (!myTeam) return null; // 데이터 로딩 전에는 아무것도 안 그림
+  // 2. 로그인 상태 체크 useEffect
+  // 외부 변수(myTeam)를 참조하지 않고 state에서 직접 찾아 에러를 방지합니다.
+  useEffect(() => {
+    if (state && state.teams) {
+      const found = state.teams.find(t => t.id === MY_TEAM_ID);
+      if (found && found.name !== "우리 팀" && found.name !== "") {
+        setIsLoggedIn(true);
+      }
+    }
+  }, [state]);
 
+  // 3. 로딩 처리 (Hook 선언이 끝난 직후)
+  if (!state) {
+    return (
+      <div style={{ background: "#0a0b14", height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>
+        <div style={{ fontFamily: "var(--mono)" }}>데이터베이스 연결 중...</div>
+      </div>
+    );
+  }
+  
+  // 4. 데이터 안전하게 추출
+  const { teams, timerSec, timerRunning } = state;
+  const myTeam = teams?.find(t => t.id === MY_TEAM_ID);
+
+  // myTeam이 없거나 초기화 중일 때를 위한 방어막
+  if (!myTeam) return null;
+
+  // 5. 이벤트 핸들러
   const handleLogin = (name) => {
     updateTeamName(MY_TEAM_ID, name);
     setIsLoggedIn(true);
   };
 
   const handleRoomClick = (id) => {
-    if (myTeam.roomsDone.includes(id)) {
+    // .includes 에러 방지: roomsDone이 없으면 빈 배열로 취급
+    const doneList = myTeam.roomsDone || [];
+    if (doneList.includes(id)) {
       setToast("이미 클리어한 방입니다.");
       return;
     }
@@ -268,8 +283,8 @@ export default function ClientApp() {
   const handleSolve = (answer) => {
     const room = ROOMS_DATA[activeRoomId];
     if (answer.trim() === room.answer) {
-      solveRoom(MY_TEAM_ID, activeRoomId);
-      setCelebration({ room, pts: room.points, total: myTeam.score + room.points });
+      solveRoom(MY_TEAM_ID, activeRoomId, room.points);
+      setCelebration({ room, pts: room.points, total: (myTeam.score || 0) + room.points });
       setActiveRoomId(null);
       if (activeRoomId < ROOMS_DATA.length - 1) {
         setCurrentRoomId(activeRoomId + 1);
@@ -280,12 +295,11 @@ export default function ClientApp() {
     }
   };
 
-  // 1단계: 로그인이 안 되어 있으면 로그인 페이지만 렌더링
+  // 6. 조건부 렌더링 (로그인)
   if (!isLoggedIn) {
     return <LoginPage onLogin={handleLogin} />;
   }
 
-  // 2단계: 로그인 후 게임 화면
   const activeRoom = activeRoomId !== null ? ROOMS_DATA[activeRoomId] : null;
 
   return (
@@ -298,7 +312,8 @@ export default function ClientApp() {
       />
 
       <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", flex: 1, overflow: "hidden" }}>
-        <Leaderboard teams={teams} />
+        {/* Leaderboard 내부에서 발생하는 .length 에러 방지를 위해 데이터를 안전하게 가공해서 넘김 */}
+        <Leaderboard teams={teams.map(t => ({...t, roomsDone: t.roomsDone || []}))} />
 
         <div style={{ display: "flex", flexDirection: "column", overflow: "hidden", background: "var(--bg)", position: "relative" }}>
           <div style={{ padding: "16px 24px 0", display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
@@ -308,12 +323,12 @@ export default function ClientApp() {
               background: "rgba(0,212,170,0.12)", border: "1px solid rgba(0,212,170,0.3)", 
               borderRadius: 20, color: "var(--accent2)" 
             }}>
-              {myTeam.name} : {myTeam.score} PTS
+              {myTeam.name} : {myTeam.score || 0} PTS
             </span>
           </div>
 
-          {/* Minimap 컴포넌트는 components.jsx에 있거나 ClientApp 상단에 정의되어 있어야 함 */}
-          <Minimap solvedRooms={myTeam.roomsDone} currentRoomId={currentRoomId} onRoomClick={handleRoomClick} />
+          {/* Minimap 에러 방지 */}
+          <Minimap solvedRooms={myTeam.roomsDone || []} currentRoomId={currentRoomId} onRoomClick={handleRoomClick} />
         </div>
       </div>
 
