@@ -3,38 +3,37 @@ import { INIT_TEAMS, TOTAL_TIME } from "./constants.js";
 import { db } from "../firebase.js";
 import { ref, onValue, set, update } from "firebase/database";
 
-const initState = () => ({
-  teams: INIT_TEAMS.map(t => ({ ...t })),
-  timerSec: TOTAL_TIME,
-  timerRunning: false,
-});
-
 export function useSharedStore() {
   const [state, setStateInner] = useState(null);
 
   useEffect(() => {
     const stateRef = ref(db, 'math_escape_game');
-    const unsubscribe = onValue(stateRef, (snapshot) => {
+    return onValue(stateRef, (snapshot) => {
       const data = snapshot.val();
       if (!data) {
-        set(stateRef, {
-          teams: INIT_TEAMS,
-          timerSec: TOTAL_TIME,
-          timerRunning: false,
-          resetToken: Date.now()
-        });
+        set(stateRef, { teams: INIT_TEAMS, timerSec: TOTAL_TIME, timerRunning: false, resetToken: Date.now() });
       } else {
-        if (data.teams && !Array.isArray(data.teams)) {
-          data.teams = Object.values(data.teams);
-        }
-        data.teams = data.teams.map(t => ({
-          ...t,
-          roomsDone: Array.isArray(t.roomsDone) ? t.roomsDone : [],
-        }));
         setStateInner(data);
       }
     });
-    return () => unsubscribe();
+  }, []);
+
+  // 함수 이름을 updateTeamScore로 통일합니다.
+  const updateTeamScore = useCallback((teamId, amt) => {
+    if (!state) return;
+    const currentScore = state.teams[teamId].score || 0;
+    update(ref(db), { [`math_escape_game/teams/${teamId}/score`]: currentScore + amt });
+  }, [state]);
+
+  const resetAll = useCallback(() => {
+    const fresh = {
+      // name을 ""로 초기화하지 않고 INIT_TEAMS의 고정 이름을 사용
+      teams: INIT_TEAMS.map(t => ({ ...t, score: 0, roomsDone: [], takenBy: "" })),
+      timerSec: TOTAL_TIME,
+      timerRunning: false,
+      resetToken: Date.now()
+    };
+    set(ref(db, 'math_escape_game'), fresh);
   }, []);
 
   // ── Actions ──────────────────────────────────
@@ -44,17 +43,6 @@ export function useSharedStore() {
       [`math_escape_game/teams/${teamId}/takenBy`]: sessionId,
       // name은 이미 지정되어 있으므로 덮어쓰지 않음
     });
-  }, []);
-
-  const resetAll = useCallback(() => {
-    const fresh = {
-      // name: "" 을 제거하여 INIT_TEAMS의 고정 이름을 사용함
-      teams: INIT_TEAMS.map(t => ({ ...t, score: 0, roomsDone: [], takenBy: "" })),
-      timerSec: TOTAL_TIME,
-      timerRunning: false,
-      resetToken: Date.now()
-    };
-    set(ref(db, 'math_escape_game'), fresh);
   }, []);
 
   const updateTeamName = useCallback((teamId, name) => {

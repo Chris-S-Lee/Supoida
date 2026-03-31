@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { ROOMS_DATA, INIT_TEAMS, pad, formatTime, btnStyle } from "../shared/constants.js";
+import { ROOMS_DATA } from "../shared/constants.js";
 import { Header, Leaderboard, Toast } from "../shared/components.jsx";
 import { useSharedStore } from "../shared/store.js";
 
@@ -186,40 +186,35 @@ function GameStats({ teams }) {
 }
 
 export default function ManagerApp() {
-  const { state, updateTeamName, updateTeamEmoji, setTimerRunning, resetAll, overrideTeam } = useSharedStore();
+  // 1. 모든 훅은 반드시 최상단에 위치해야 합니다.
+  const { state,updateTeamScore,resetAll,setTimerRunning,tickTimer,overrideTeam } = useSharedStore();
   const [toast, setToast] = useState(null);
 
+  const handleUpdateScore = useCallback((teamId, amt) => {
+    updateTeamScore(teamId, amt); // 상단에서 가져온 이름과 일치시킴
+  }, [updateTeamScore]);
+
+  const handleOverride = useCallback((teamId, newValues) => {
+    if (overrideTeam) {
+      overrideTeam(teamId, newValues);
+      setToast("팀 정보가 수정되었습니다.");
+    }
+  }, [overrideTeam]);
+
   const handleReset = useCallback(() => {
-    if (window.confirm("정말로 모든 데이터를 초기화할까요?")) {
+    if (window.confirm("정말로 리셋하시겠습니까? 팀 이름은 유지됩니다.")) {
       resetAll();
-      setToast("모든 데이터가 리셋되었습니다.");
+      setToast("리셋 완료");
     }
   }, [resetAll]);
 
-  const handleUpdateScore = useCallback((teamId, amt) => {
-    updateScore(teamId, amt);
-  }, [updateScore]);
-
-  if (!state) {
-    return (
-      <div style={{ background:"#0a0b14", height:"100vh", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff" }}>
-        <div style={{ fontFamily:"var(--mono)" }}>연결 중...</div>
-      </div>
-    );
-  }
-
+  // 2. 모든 훅 선언이 끝난 후에 조건부 렌더링을 합니다.
+  if (!state) return <div style={{color:"white", padding:20}}>로딩 중...</div>;
 
   const { teams, timerSec, timerRunning } = state;
   const sorted = [...teams].sort((a, b) => b.score - a.score);
   const safeTeams = teams.map(t => ({ ...t, roomsDone: t.roomsDone || [] }));
   const sortedTeams = [...teams].sort((a, b) => (b.score || 0) - (a.score || 0));
-
-
-  
-  const handleOverride = useCallback((teamId, patch) => {
-    overrideTeam(teamId, patch);
-    setToast("팀 정보가 업데이트되었습니다.");
-  }, [overrideTeam]);
 
   return (
     <>
