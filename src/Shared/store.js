@@ -43,63 +43,56 @@ export function useSharedStore() {
 
   // ── Actions ─────────────────────────────────────────────────────────────────
 
-  // 팀 이름 업데이트 (사용자가 입장할 때 입력한 이름 저장)
+  // store.js 내부의 return 바로 위쪽 함수들을 이 내용으로 교체하세요.
+
+  // 1. 팀 이름 업데이트 (로그인 시)
   const updateTeamName = useCallback((teamId, name) => {
     if (!state) return;
     const updates = {};
-    // 특정 팀의 이름만 경로를 찾아 업데이트합니다.
-    const teamIndex = state.teams.findIndex(t => t.id === teamId);
-    if (teamIndex !== -1) {
-      updates[`math_escape_game/teams/${teamIndex}/name`] = name;
-      update(ref(db), updates);
-    }
+    updates[`math_escape_game/teams/${teamId}/name`] = name;
+    update(ref(db), updates);
   }, [state]);
 
-  // 방 탈출 성공 시 점수 및 기록 업데이트
+  // 2. 문제 해결 시 점수와 완료 목록 업데이트
   const solveRoom = useCallback((teamId, roomId, pts) => {
     if (!state) return;
-    const teamIndex = state.teams.findIndex(t => t.id === teamId);
-    if (teamIndex === -1) return;
-
-    const team = state.teams[teamIndex];
+    const team = state.teams[teamId];
     const newRoomsDone = [...(team.roomsDone || []), roomId];
     
     const updates = {};
-    updates[`math_escape_game/teams/${teamIndex}/score`] = team.score + pts;
-    updates[`math_escape_game/teams/${teamIndex}/roomsDone`] = newRoomsDone;
-    updates[`math_escape_game/teams/${teamIndex}/currentRoom`] = roomId;
+    updates[`math_escape_game/teams/${teamId}/score`] = (team.score || 0) + pts;
+    updates[`math_escape_game/teams/${teamId}/roomsDone`] = newRoomsDone;
+    updates[`math_escape_game/teams/${teamId}/currentRoom`] = roomId;
     
     update(ref(db), updates);
   }, [state]);
 
-  // 팀의 현재 위치 이동
+  // 3. 팀 위치 이동
   const moveTeam = useCallback((teamId, roomId) => {
     if (!state) return;
-    const teamIndex = state.teams.findIndex(t => t.id === teamId);
-    if (teamIndex !== -1) {
-      const updates = {};
-      updates[`math_escape_game/teams/${teamIndex}/currentRoom`] = roomId;
-      update(ref(db), updates);
-    }
+    const updates = {};
+    updates[`math_escape_game/teams/${teamId}/currentRoom`] = roomId;
+    update(ref(db), updates);
   }, [state]);
 
-  // 타이머 작동 제어 (매니저용)
+  // 4. 타이머 및 초기화 (매니저용)
   const setTimerRunning = useCallback((running) => {
-    if (!state) return;
     update(ref(db), { "math_escape_game/timerRunning": running });
-  }, [state]);
+  }, []);
 
-  // 타이머 1초씩 감소
   const tickTimer = useCallback(() => {
     if (!state || !state.timerRunning || state.timerSec <= 0) return;
     update(ref(db), { "math_escape_game/timerSec": state.timerSec - 1 });
   }, [state]);
 
-  // 모든 데이터 초기화 (매니저용)
   const resetAll = useCallback(() => {
-    const fresh = initState();
-    saveToFirebase(fresh);
-  }, [saveToFirebase]);
+    const fresh = {
+      teams: INIT_TEAMS.map(t => ({ ...t, score: 0, roomsDone: [] })),
+      timerSec: TOTAL_TIME,
+      timerRunning: false
+    };
+    set(ref(db, 'math_escape_game'), fresh);
+  }, []);
 
   // 매니저가 특정 팀 정보를 강제로 수정할 때
   const overrideTeam = useCallback((teamId, patch) => {
