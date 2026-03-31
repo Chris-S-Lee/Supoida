@@ -1,7 +1,6 @@
-export const MY_TEAM_ID = 0;
 export const TOTAL_TIME = 30 * 60;
 export const CONFETTI_COLORS = ["#6c63ff","#00d4aa","#ffd700","#ff6b6b","#00ff88","#85b7eb"];
-export const STORE_KEY = "math_escape_state";
+export const SESSION_KEY = "math_escape_my_team_id";
 
 export const ROOMS_DATA = [
   { id:0, label:"시작 로비",  icon:"🚪", x:60,  y:210, topic:"입장",   points:50,  diff:1,
@@ -29,13 +28,34 @@ export const ROOMS_DATA = [
 
 export const CORRIDORS = [[0,1],[1,2],[2,3],[3,4],[4,5],[5,6]];
 
-export const INIT_TEAMS = [
-  { id:0, name:"우리 팀",   emoji:"🌟", color:"#6c63ff", score:0, roomsDone:[], currentRoom:0 },
-  { id:1, name:"알파 팀",   emoji:"🔥", color:"#ff6b6b", score:0, roomsDone:[], currentRoom:0 },
-  { id:2, name:"베타 팀",   emoji:"💎", color:"#00d4aa", score:0, roomsDone:[], currentRoom:0 },
-  { id:3, name:"감마 팀",   emoji:"⚡", color:"#ffd700", score:0, roomsDone:[], currentRoom:0 },
-  { id:4, name:"델타 팀",   emoji:"🌊", color:"#85b7eb", score:0, roomsDone:[], currentRoom:0 },
-  { id:5, name:"엡실론 팀", emoji:"🍀", color:"#97c459", score:0, roomsDone:[], currentRoom:0 },
+// ── 팀 설정 (10팀, 아이콘 없음) ─────────────────────────────────────────────
+const TEAM_COLORS = [
+  "#6c63ff", // 1팀 — 보라
+  "#ff6b6b", // 2팀 — 빨강
+  "#00d4aa", // 3팀 — 민트
+  "#ffd700", // 4팀 — 금색
+  "#85b7eb", // 5팀 — 하늘
+  "#97c459", // 6팀 — 연두
+  "#ff9500", // 7팀 — 주황
+  "#e056fd", // 8팀 — 보라핑크
+  "#00cec9", // 9팀 — 청록
+  "#fd79a8", // 10팀 — 핑크
+];
+
+const TEAM_LABELS = [
+  "1팀","2팀","3팀","4팀","5팀",
+  "6팀","7팀","8팀","9팀","10팀",
+];
+
+export const INIT_TEAMS = TEAM_LABELS.map((label, i) => ({
+  id: i, name: label, color: TEAM_COLORS[i],
+  score: 0, roomsDone: [], currentRoom: 0, takenBy: "",
+}));
+
+// ── 닉네임 선택 목록 ─────────────────────────────────────────────────────────
+export const NICKNAMES = [
+  "1팀","2팀","3팀","4팀","5팀",
+  "6팀","7팀","8팀","9팀","10팀",
 ];
 
 export const GLOBAL_CSS = `
