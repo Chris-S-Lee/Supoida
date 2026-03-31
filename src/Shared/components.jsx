@@ -14,53 +14,97 @@ export function Toast({ msg, onDone }) {
   );
 }
 
-// ── GridBg ───────────────────────────────────────────────────────────────────
+// ── GridBg (오타 수정됨) ───────────────────────────────────────────
 export function GridBg() {
   return (
     <div style={{
-      position:"absolute", inset:0, pointerEvents:"none",
-      backgroundImage:"linear-gradient(rgba(108,99,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(108,99,255,0.03) 1px,transparent 1px)",
-      backgroundSize:"40px 40px",
+      position: "absolute", 
+      inset: 0, 
+      pointerEvents: "none",
+      backgroundImage: "linear-gradient(rgba(108,99,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(108,99,255,0.03) 1px, transparent 1px)",
+      backgroundSize: "40px 40px",
     }} />
   );
 }
 
 // ── Header ───────────────────────────────────────────────────────────────────
 export function Header({ timerSec, timerRunning, onToggleTimer, onReset, rightSlot }) {
-  const urgent = timerSec < 300;
   return (
     <header style={{
-      display:"flex", alignItems:"center", justifyContent:"space-between",
-      padding:"12px 24px", background:"var(--surface)",
-      borderBottom:"1px solid var(--border)", zIndex:10, flexShrink:0,
+      height:60, background:"var(--surface)", borderBottom:"1px solid var(--border)",
+      display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 24px", flexShrink:0, zIndex:10
     }}>
-      <div style={{ fontFamily:"var(--mono)", fontSize:18, fontWeight:700, letterSpacing:2, color:"var(--accent)" }}>
-        MATH<span style={{ color:"var(--accent2)" }}>_</span>ESCAPE
+      <div style={{ display:"flex", alignItems:"center", gap:20 }}>
+        <h1 style={{ fontSize:18, fontWeight:800, letterSpacing:2, color: "var(--accent)", margin:0 }}>MATH ESCAPE</h1>
+        <div style={{ display:"flex", alignItems:"center", gap:12, background:"rgba(0,0,0,0.2)", padding:"6px 16px", borderRadius:6, border:"1px solid var(--border)" }}>
+          <span style={{ fontSize:18 }}>{timerSec > 0 ? "⏱️" : "⌛"}</span>
+          <span style={{ fontFamily:"var(--mono)", fontSize:20, fontWeight:700, color: timerSec < 60 ? "var(--accent3)" : "#fff", width:80 }}>
+            {formatTime(timerSec)}
+          </span>
+        </div>
       </div>
-      <div style={{
-        fontFamily:"var(--mono)", fontSize:28, fontWeight:700,
-        color: urgent ? "var(--accent3)" : "var(--gold)",
-        letterSpacing:4, textShadow: urgent ? "none" : "0 0 20px rgba(255,215,0,0.4)",
-        ...(urgent ? { animation:"pulse 1s infinite" } : {}),
-      }}>
-        {formatTime(timerSec)}
-      </div>
-      <div style={{ display:"flex", gap:12, alignItems:"center" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         {rightSlot}
-        <button onClick={onToggleTimer} style={btnStyle}>{timerRunning ? "⏸ 일시정지" : "▶ 재개"}</button>
-        <button onClick={onReset}       style={btnStyle}>↺ 리셋</button>
+        {onReset && <button onClick={onReset} style={{ ...btnStyle, background:"transparent", color:"var(--text2)" }}>RESET</button>}
       </div>
     </header>
   );
 }
 
-// ── Leaderboard ──────────────────────────────────────────────
+// ── Leaderboard (순위 교차 검증 + 공동 순위 로직 강화) ──────────────
 export function Leaderboard({ teams, myTeamId = null }) {
-  const sorted = [...teams].sort((a, b) => b.score - a.score);
+  const [prevRanks, setPrevRanks] = useState({}); 
+  const [diffs, setDiffs] = useState({});         
   const total = ROOMS_DATA.length;
-  
-  // 행간 너비를 줄이기 위해 높이 값을 78에서 50으로 조정
   const ROW_H = 50; 
+
+  // 1. 현재 순위 계산 (공동 순위 로직: 점수가 같으면 같은 순위)
+  const sorted = [...teams].sort((a, b) => (b.score || 0) - (a.score || 0));
+  
+  let lastScore = -1;
+  let lastRank = 0;
+  const rankedTeams = sorted.map((team, index) => {
+    if ((team.score || 0) !== lastScore) {
+      lastRank = index + 1; // 새로운 점수가 나오면 현재 인덱스+1이 순위
+      lastScore = (team.score || 0);
+    }
+    return { ...team, rank: lastRank };
+  });
+
+  // 2. 순위 변동 감지 (상대 팀과 비교하여 '순위 숫자'가 변했을 때만)
+  useEffect(() => {
+    const newDiffs = { ...diffs };
+    let hasUpdate = false;
+
+    rankedTeams.forEach((team) => {
+      const oldRank = prevRanks[team.id];
+      const newRank = team.rank;
+
+      // 이전 기록이 있고, 실제로 순위 숫자(Rank)가 변한 경우 (상대를 추월하거나 추월당함)
+      if (oldRank !== undefined && oldRank !== newRank) {
+        // 숫자가 작아지면(예: 3위 -> 1위) UP, 커지면 DOWN
+        const direction = newRank < oldRank ? "UP" : "DOWN";
+        newDiffs[team.id] = direction;
+        hasUpdate = true;
+
+        // 5초 후 화살표 제거
+        setTimeout(() => {
+          setDiffs(curr => {
+            const copy = { ...curr };
+            delete copy[team.id];
+            return copy;
+          });
+        }, 5000);
+      }
+    });
+
+    // 현재 계산된 순위들을 다음 비교를 위해 저장
+    const nextRanks = {};
+    rankedTeams.forEach(t => { nextRanks[t.id] = t.rank; });
+    setPrevRanks(nextRanks);
+
+    if (hasUpdate) setDiffs(newDiffs);
+  }, [teams]);
 
   return (
     <aside style={{
@@ -72,49 +116,59 @@ export function Leaderboard({ teams, myTeamId = null }) {
         display: "flex", alignItems: "center", gap: 10, flexShrink: 0,
       }}>
         <div className="live-dot" />
-        <span style={{ fontFamily: "var(--mono)", fontSize: 11, letterSpacing: 3, color: "var(--text2)" }}>실시간 순위</span>
+        <span style={{ fontFamily: "var(--mono)", fontSize: 11, letterSpacing: 3, color: "var(--text2)" }}>LIVE STANDINGS</span>
       </div>
 
-      <div style={{ flex: 1, overflowY: "auto", position: "relative", minHeight: sorted.length * ROW_H + 16 }}>
-        {sorted.map((team, i) => {
-          const pct = Math.round(((team.roomsDone?.length ?? 0) / total) * 100);
+      <div style={{ flex: 1, overflowY: "auto", position: "relative" }}>
+        {rankedTeams.map((team, i) => {
           const isMe = team.id === myTeamId;
-          const curRoom = ROOMS_DATA[team.currentRoom];
-          // 팀 이름이 없을 경우 기본값 표시
-          const displayName = team.name || `팀 ${team.id + 1}`; 
+          const solvedCount = team.roomsDone?.length ?? 0;
+          const diff = diffs[team.id];
 
           return (
             <div key={team.id} style={{
               position: "absolute", left: 0, right: 0, 
-              top: 8 + i * ROW_H, // 간격 조정 적용
-              transition: "top 0.55s cubic-bezier(0.4,0,0.2,1)",
+              top: 8 + i * ROW_H,
+              transition: "top 0.6s cubic-bezier(0.4, 0, 0.2, 1)",
               display: "flex", alignItems: "center", 
-              padding: "6px 20px", // 세로 패딩 축소
-              gap: 10,
+              padding: "6px 18px", gap: 12,
               background: isMe ? "rgba(108,99,255,0.08)" : "transparent",
             }}>
-              {isMe && <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: "var(--accent)", borderRadius: "0 2px 2px 0" }} />}
-
-              {/* 순위 */}
-              <div style={{ fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, minWidth: 24, color: "var(--text2)" }}>
-                #{i + 1}
+              {/* 순위 영역: 변동 시 화살표, 아닐 시 숫자 */}
+              <div style={{ 
+                width: 32, display: "flex", justifyContent: "center", 
+                fontFamily: "var(--mono)", fontSize: 16, fontWeight: 800 
+              }}>
+                {diff === "UP" ? (
+                  <span style={{ color: "#00ff88", filter: "drop-shadow(0 0 5px #00ff88)", animation: "ptsPop 0.4s ease" }}>▲</span>
+                ) : diff === "DOWN" ? (
+                  <span style={{ color: "#ff4d4d", filter: "drop-shadow(0 0 5px #ff4d4d)", animation: "ptsPop 0.4s ease" }}>▼</span>
+                ) : (
+                  <span style={{ color: isMe ? "var(--accent)" : "var(--text2)" }}>{team.rank}</span>
+                )}
               </div>
 
-              {/* 팀 아이콘/이름 */}
+              {/* 팀 정보 & 3/7 진행도 */}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: team.color }}>
-                  {displayName}
-                  {isMe && <span style={{ color: "var(--accent)", fontSize: 10, marginLeft: 4 }}>(나)</span>}
+                <div style={{ 
+                  fontSize: 13, fontWeight: 800, color: team.color,
+                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" 
+                }}>
+                  {team.name || `팀 ${team.id + 1}`}
                 </div>
-                {/* 진행바 (간격을 위해 높이 축소) */}
-                <div style={{ height: 3, background: "var(--surface2)", borderRadius: 2, overflow: "hidden", marginTop: 4 }}>
-                  <div style={{ height: "100%", background: team.color, width: `${pct}%`, transition: "width 0.8s" }} />
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
+                   <div style={{ flex: 1, height: 3, background: "var(--surface2)", borderRadius: 2 }}>
+                      <div style={{ height: "100%", background: team.color, width: `${(solvedCount/total)*100}%`, transition: "width 1s" }} />
+                   </div>
+                   <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--text2)", minWidth: 25 }}>
+                     {solvedCount}/{total}
+                   </span>
                 </div>
               </div>
 
               {/* 점수 */}
-              <div style={{ fontFamily: "var(--mono)", fontSize: 13, fontWeight: 700, minWidth: 40, textAlign: "right", color: "var(--accent2)" }}>
-                {team.score}
+              <div style={{ fontFamily: "var(--mono)", fontSize: 14, fontWeight: 700, color: "var(--text)", textAlign: "right", minWidth: 40 }}>
+                {team.score || 0}
               </div>
             </div>
           );

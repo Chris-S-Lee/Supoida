@@ -42,20 +42,21 @@ const TEAM_COLORS = [
   "#fd79a8", // 10팀 — 핑크
 ];
 
-const TEAM_LABELS = [
-  "1팀","2팀","3팀","4팀","5팀",
-  "6팀","7팀","8팀","9팀","10팀",
+// shared/constants.js 파일 상단 또는 INIT_TEAMS 정의 부분
+export const TEAM_NAMES = [
+  "하자", "에이레네", "에르곤", "아모", "루트원", 
+  "시몬스", "대대손손", "용사", "For용", "헤핑"
 ];
 
-export const INIT_TEAMS = TEAM_LABELS.map((label, i) => ({
+export const INIT_TEAMS = TEAM_NAMES.map((label, i) => ({
   id: i, name: label, color: TEAM_COLORS[i],
   score: 0, roomsDone: [], currentRoom: 0, takenBy: "",
 }));
 
 // ── 닉네임 선택 목록 ─────────────────────────────────────────────────────────
 export const NICKNAMES = [
-  "1팀","2팀","3팀","4팀","5팀",
-  "6팀","7팀","8팀","9팀","10팀",
+  "하자", "에이레네", "에르곤", "아모", "루트원", 
+  "시몬스", "대대손손", "용사", "For용", "헤핑",
 ];
 
 export const GLOBAL_CSS = `

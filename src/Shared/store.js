@@ -78,15 +78,22 @@ export function useSharedStore() {
     update(ref(db), { "math_escape_game/timerSec": state.timerSec - 1 });
   }, [state]);
 
+  // shared/store.js 내의 resetAll 함수 부분
   const resetAll = useCallback(() => {
     const fresh = {
-      teams: INIT_TEAMS.map(t => ({ ...t, score: 0, roomsDone: [], takenBy: "", name: "" })),
+      // t.name을 ""로 초기화하지 않고 INIT_TEAMS의 기본 이름을 유지합니다.
+      teams: INIT_TEAMS.map(t => ({ 
+        ...t, 
+        score: 0, 
+        roomsDone: [], 
+        takenBy: "" 
+        // name: "" 부분을 삭제하여 INIT_TEAMS의 이름을 사용하게 함
+      })),
       timerSec: TOTAL_TIME,
       timerRunning: false,
+      resetToken: Date.now()
     };
     set(ref(db, 'math_escape_game'), fresh);
-    // 리셋 시 모든 클라이언트의 세션도 무효화되도록 resetToken 갱신
-    update(ref(db), { "math_escape_game/resetToken": Date.now() });
   }, []);
 
   const overrideTeam = useCallback((teamId, patch) => {
