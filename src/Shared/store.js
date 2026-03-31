@@ -17,10 +17,13 @@ export function useSharedStore() {
     const unsubscribe = onValue(stateRef, (snapshot) => {
       const data = snapshot.val();
       if (!data) {
-        const fresh = initState();
-        set(stateRef, fresh);
+        set(stateRef, {
+          teams: INIT_TEAMS,
+          timerSec: TOTAL_TIME,
+          timerRunning: false,
+          resetToken: Date.now()
+        });
       } else {
-        // Firebase arrays can come back as objects with numeric keys – normalize
         if (data.teams && !Array.isArray(data.teams)) {
           data.teams = Object.values(data.teams);
         }
@@ -34,14 +37,24 @@ export function useSharedStore() {
     return () => unsubscribe();
   }, []);
 
-  // ── Actions ──────────────────────────────────────────────────────────────────
+  // ── Actions ──────────────────────────────────
+  
+  const claimTeam = useCallback((teamId, nickname, sessionId) => {
+    update(ref(db), {
+      [`math_escape_game/teams/${teamId}/takenBy`]: sessionId,
+      // name은 이미 지정되어 있으므로 덮어쓰지 않음
+    });
+  }, []);
 
-  /** 팀 이름 + takenBy(세션id) 동시 설정 — 팀 선택 시 호출 */
-  const claimTeam = useCallback((teamId, name, sessionId) => {
-    const updates = {};
-    updates[`math_escape_game/teams/${teamId}/name`]    = name;
-    updates[`math_escape_game/teams/${teamId}/takenBy`] = sessionId;
-    update(ref(db), updates);
+  const resetAll = useCallback(() => {
+    const fresh = {
+      // name: "" 을 제거하여 INIT_TEAMS의 고정 이름을 사용함
+      teams: INIT_TEAMS.map(t => ({ ...t, score: 0, roomsDone: [], takenBy: "" })),
+      timerSec: TOTAL_TIME,
+      timerRunning: false,
+      resetToken: Date.now()
+    };
+    set(ref(db, 'math_escape_game'), fresh);
   }, []);
 
   const updateTeamName = useCallback((teamId, name) => {
@@ -78,24 +91,6 @@ export function useSharedStore() {
     update(ref(db), { "math_escape_game/timerSec": state.timerSec - 1 });
   }, [state]);
 
-  // shared/store.js 내의 resetAll 함수 부분
-  const resetAll = useCallback(() => {
-    const fresh = {
-      // t.name을 ""로 초기화하지 않고 INIT_TEAMS의 기본 이름을 유지합니다.
-      teams: INIT_TEAMS.map(t => ({ 
-        ...t, 
-        score: 0, 
-        roomsDone: [], 
-        takenBy: "" 
-        // name: "" 부분을 삭제하여 INIT_TEAMS의 이름을 사용하게 함
-      })),
-      timerSec: TOTAL_TIME,
-      timerRunning: false,
-      resetToken: Date.now()
-    };
-    set(ref(db, 'math_escape_game'), fresh);
-  }, []);
-
   const overrideTeam = useCallback((teamId, patch) => {
     if (!state) return;
     const updates = {};
@@ -108,6 +103,7 @@ export function useSharedStore() {
   return {
     state,
     claimTeam,
+    resetAll,
     updateTeamName,
     updateTeamEmoji,
     solveRoom,

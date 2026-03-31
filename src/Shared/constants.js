@@ -2,6 +2,22 @@ export const TOTAL_TIME = 30 * 60;
 export const CONFETTI_COLORS = ["#6c63ff","#00d4aa","#ffd700","#ff6b6b","#00ff88","#85b7eb"];
 export const SESSION_KEY = "math_escape_my_team_id";
 
+export const TEAM_NAMES = [
+  "하자", "에이레네", "에르곤", "아모", "루트원", 
+  "시몬스", "대대손손", "용사", "For용", "헤핑"
+];
+
+export const INIT_TEAMS = TEAM_NAMES.map((name, i) => ({
+  id: i,
+  name: name, 
+  color: ["#6c63ff", "#00d4aa", "#ffd700", "#ff6b6b", "#a29bfe", "#fd79a8", "#fab1a0", "#00cec9", "#74b9ff", "#a29bfe"][i % 10],
+  emoji: "🚀",
+  score: 0,
+  currentRoom: 0,
+  roomsDone: [],
+  takenBy: ""
+}));
+
 export const ROOMS_DATA = [
   { id:0, label:"시작 로비",  icon:"🚪", x:60,  y:210, topic:"입장",   points:50,  diff:1,
     problem:"방탈출에 오신 것을 환영합니다!\n첫 번째 열쇠를 얻기 위해 암호를 입력하세요.",
@@ -42,16 +58,6 @@ const TEAM_COLORS = [
   "#fd79a8", // 10팀 — 핑크
 ];
 
-// shared/constants.js 파일 상단 또는 INIT_TEAMS 정의 부분
-export const TEAM_NAMES = [
-  "하자", "에이레네", "에르곤", "아모", "루트원", 
-  "시몬스", "대대손손", "용사", "For용", "헤핑"
-];
-
-export const INIT_TEAMS = TEAM_NAMES.map((label, i) => ({
-  id: i, name: label, color: TEAM_COLORS[i],
-  score: 0, roomsDone: [], currentRoom: 0, takenBy: "",
-}));
 
 // ── 닉네임 선택 목록 ─────────────────────────────────────────────────────────
 export const NICKNAMES = [

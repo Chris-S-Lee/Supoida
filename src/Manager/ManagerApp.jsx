@@ -189,6 +189,17 @@ export default function ManagerApp() {
   const { state, updateTeamName, updateTeamEmoji, setTimerRunning, resetAll, overrideTeam } = useSharedStore();
   const [toast, setToast] = useState(null);
 
+  const handleReset = useCallback(() => {
+    if (window.confirm("정말로 모든 데이터를 초기화할까요?")) {
+      resetAll();
+      setToast("모든 데이터가 리셋되었습니다.");
+    }
+  }, [resetAll]);
+
+  const handleUpdateScore = useCallback((teamId, amt) => {
+    updateScore(teamId, amt);
+  }, [updateScore]);
+
   if (!state) {
     return (
       <div style={{ background:"#0a0b14", height:"100vh", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff" }}>
@@ -197,16 +208,14 @@ export default function ManagerApp() {
     );
   }
 
+
   const { teams, timerSec, timerRunning } = state;
   const sorted = [...teams].sort((a, b) => b.score - a.score);
   const safeTeams = teams.map(t => ({ ...t, roomsDone: t.roomsDone || [] }));
+  const sortedTeams = [...teams].sort((a, b) => (b.score || 0) - (a.score || 0));
 
-  const handleReset = () => {
-    if (!window.confirm("전체 게임을 리셋하시겠습니까?\n(모든 팀의 진행상황과 세션이 초기화됩니다)")) return;
-    resetAll();
-    setToast("게임이 리셋되었습니다.");
-  };
 
+  
   const handleOverride = useCallback((teamId, patch) => {
     overrideTeam(teamId, patch);
     setToast("팀 정보가 업데이트되었습니다.");
