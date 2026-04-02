@@ -59,14 +59,19 @@ export function Leaderboard({ teams, myTeamId = null }) {
   const ROW_H = 50; 
 
   // 1. 현재 순위 계산 (공동 순위 로직: 점수가 같으면 같은 순위)
-  const sorted = [...teams].sort((a, b) => (b.score || 0) - (a.score || 0));
-  
-  let lastScore = -1;
+  const sorted = [...teams].sort((a, b) => {
+    const bCount = b.roomsDone?.length ?? 0;
+    const aCount = a.roomsDone?.length ?? 0;
+    return bCount - aCount;
+  });
+
+  let lastCount = -1;
   let lastRank = 0;
   const rankedTeams = sorted.map((team, index) => {
-    if ((team.score || 0) !== lastScore) {
-      lastRank = index + 1; // 새로운 점수가 나오면 현재 인덱스+1이 순위
-      lastScore = (team.score || 0);
+    const currentCount = team.roomsDone?.length ?? 0;
+    if (currentCount !== lastCount) {
+      lastRank = index + 1;
+      lastCount = currentCount;
     }
     return { ...team, rank: lastRank };
   });
@@ -150,25 +155,22 @@ export function Leaderboard({ teams, myTeamId = null }) {
 
               {/* 팀 정보 & 3/7 진행도 */}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ 
-                  fontSize: 13, fontWeight: 800, color: team.color,
-                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" 
-                }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: team.color }}>
                   {team.name || `팀 ${team.id + 1}`}
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
-                   <div style={{ flex: 1, height: 3, background: "var(--surface2)", borderRadius: 2 }}>
-                      <div style={{ height: "100%", background: team.color, width: `${(solvedCount/total)*100}%`, transition: "width 1s" }} />
-                   </div>
-                   <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--text2)", minWidth: 25 }}>
-                     {solvedCount}/{total}
-                   </span>
+                {/* 진행도 바 */}
+                <div style={{ flex: 1, height: 3, background: "var(--surface2)", borderRadius: 2, marginTop: 6 }}>
+                  <div style={{ height: "100%", background: team.color, width: `${(solvedCount/total)*100}%`, transition: "width 1s" }} />
                 </div>
               </div>
 
-              {/* 점수 */}
-              <div style={{ fontFamily: "var(--mono)", fontSize: 14, fontWeight: 700, color: "var(--text)", textAlign: "right", minWidth: 40 }}>
-                {team.score || 0}
+              {/* 포인트(점수)가 있던 자리에 진행도(분수) 표시 */}
+              <div style={{ 
+                fontFamily: "var(--mono)", fontSize: 13, fontWeight: 700, 
+                color: solvedCount === total ? "var(--green)" : "var(--text)", 
+                textAlign: "right", minWidth: 45 
+              }}>
+                {solvedCount}/{total}
               </div>
             </div>
           );

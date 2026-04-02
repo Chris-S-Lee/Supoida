@@ -1,0 +1,2 @@
+dist/intro.mp4 filter=lfs diff=lfs merge=lfs -text
+public/intro.mp4 filter=lfs diff=lfs merge=lfs -text

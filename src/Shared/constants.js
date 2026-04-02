@@ -19,30 +19,27 @@ export const INIT_TEAMS = TEAM_NAMES.map((name, i) => ({
 }));
 
 export const ROOMS_DATA = [
-  { id:0, label:"시작 로비",  icon:"🚪", x:60,  y:210, topic:"입장",   points:50,  diff:1,
-    problem:"방탈출에 오신 것을 환영합니다!\n첫 번째 열쇠를 얻기 위해 암호를 입력하세요.",
-    formula:"2 + 2 = ?", answer:"4", hint:"가장 기본적인 덧셈입니다." },
-  { id:1, label:"대수학 방",  icon:"📐", x:175, y:210, topic:"대수학", points:100, diff:2,
+  { id:0, label:"대수학 방",  icon:"📐", topic:"대수학", points:100, diff:2,
     problem:"다음 이차방정식의 해를 구하시오.\n(두 근의 합을 입력하세요)",
     formula:"x² − 5x + 6 = 0", answer:"5", hint:"인수분해: (x−2)(x−3) = 0" },
-  { id:2, label:"기하학 방",  icon:"🔺", x:290, y:210, topic:"기하학", points:100, diff:2,
+  { id:1, label:"기하학 방",  icon:"🔺", topic:"기하학", points:100, diff:2,
     problem:"반지름이 5인 원의 넓이를 구하시오.\n(소수점 이하 반올림, π=3.14 사용)",
     formula:"S = πr²", answer:"79", hint:"5×5×3.14 = 78.5 → 반올림하면 79" },
-  { id:3, label:"수열 방",    icon:"∞",  x:405, y:210, topic:"수열",   points:150, diff:3,
+  { id:2, label:"수열 방",    icon:"∞",  topic:"수열",   points:150, diff:3,
     problem:"등차수열의 첫째 항이 3, 공차가 4일 때,\n제 10항을 구하시오.",
     formula:"aₙ = a₁ + (n−1)d", answer:"39", hint:"3 + (10−1)×4 = 3 + 36 = 39" },
-  { id:4, label:"확률 방",    icon:"🎲", x:520, y:210, topic:"확률",   points:150, diff:3,
+  { id:3, label:"확률 방",    icon:"🎲", topic:"확률",   points:150, diff:3,
     problem:"주사위 두 개를 던질 때 두 눈의 합이 7이 될 확률을 분수로 입력하세요.\n(분자만 입력, 분모=36)",
     formula:"P(A) = n(A)/n(S)", answer:"6", hint:"합이 7: (1,6)(2,5)(3,4)(4,3)(5,2)(6,1) → 6가지" },
-  { id:5, label:"미적분 방",  icon:"∫",  x:635, y:210, topic:"미적분", points:200, diff:4,
+  { id:4, label:"미적분 방",  icon:"∫",  topic:"미적분", points:200, diff:4,
     problem:"다음 함수를 미분하시오.\n(x의 계수를 입력하세요)",
     formula:"f(x) = 3x² + 2x + 1", answer:"6", hint:"f'(x) = 6x + 2 에서 x의 계수는 6" },
-  { id:6, label:"최종 탈출",  icon:"🏆", x:690, y:210, topic:"탈출!",  points:300, diff:5,
-    problem:"축하합니다! 마지막 관문입니다.\n모든 지식을 활용해 최후의 암호를 풀어보세요.",
-    formula:"π + e ≈ ?", answer:"6", hint:"π≈3.14, e≈2.72 → 합 ≈ 5.86 → 반올림 6" },
+  { id:5, label:"통계학 방",  icon:"📊", topic:"통계",   points:200, diff:4,
+    problem:"1, 2, 3, 4, 5의 표준편차를 구하시오.\n(소수점 첫째 자리까지, 예: 1.4)",
+    formula:"σ = √(Σ(xᵢ−μ)²/n)", answer:"1.4", hint:"평균=3, 분산=2, 표준편차=√2≈1.41→1.4" },
 ];
 
-export const CORRIDORS = [[0,1],[1,2],[2,3],[3,4],[4,5],[5,6]];
+export const CORRIDORS = [];
 
 // ── 팀 설정 (10팀, 아이콘 없음) ─────────────────────────────────────────────
 const TEAM_COLORS = [
@@ -75,7 +72,13 @@ export const GLOBAL_CSS = `
     --text:#e8e8f0; --text2:#8888aa; --green:#00ff88; --orange:#ff9500;
   }
   *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-  body { background:var(--bg); color:var(--text); font-family:var(--sans); overflow:hidden; -webkit-font-smoothing: antialiased;}
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    overflow-x: hidden; /* 가로 스크롤 방지 */
+  }
   #root { height:100vh; display:flex; flex-direction:column; }
   ::-webkit-scrollbar { width:4px; }
   ::-webkit-scrollbar-track { background:transparent; }
@@ -95,7 +98,11 @@ export const GLOBAL_CSS = `
   @keyframes fadeInUp   { from{opacity:0;transform:translateX(-50%) translateY(12px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
   @keyframes float      { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
   @keyframes slideIn    { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
-
+  @keyframes fadeOut    {from { opacity: 1; } to { opacity: 0; }
+  }
+  .intro-exit {
+    animation: fadeOut 0.5s forwards;
+  }
   .live-dot {
     width:7px; height:7px; border-radius:50%; background:var(--green);
     box-shadow:0 0 8px var(--green); animation:livepulse 2s infinite; flex-shrink:0;
@@ -104,11 +111,12 @@ export const GLOBAL_CSS = `
   .math-text, .timer, .score {
     font-family: var(--mono) !important;
   }
+
 `;
 
 export const pad = (n) => String(n).padStart(2, "0");
 export const formatTime = (sec) => `${pad(Math.floor(sec / 60))}:${pad(sec % 60)}`;
-export const isRoomUnlocked = (roomId, solvedRooms) => roomId === 0 || solvedRooms.includes(roomId - 1);
+export const isRoomUnlocked = (roomId, solvedRooms) => true;
 
 export const btnStyle = {
   fontFamily:"var(--mono)", fontSize:11, letterSpacing:1, padding:"7px 16px",

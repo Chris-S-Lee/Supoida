@@ -84,9 +84,9 @@ function TeamCard({ team, rank, onNameChange, onEmojiChange, onOverride }) {
           )}
         </div>
 
-        <div style={{ fontFamily:"var(--mono)", fontSize:20, fontWeight:700, color:"var(--accent2)", flexShrink:0 }}>
+        {/* <div style={{ fontFamily:"var(--mono)", fontSize:20, fontWeight:700, color:"var(--accent2)", flexShrink:0 }}>
           {team.score}pt
-        </div>
+        </div> */}
       </div>
 
       <div style={{ marginBottom:14 }}>
@@ -278,7 +278,7 @@ export default function ManagerApp() {
                     </div>
                     <div style={{ fontFamily:"var(--mono)", fontSize:11, color:"var(--accent2)", fontWeight:700 }}>{cleared}/{teams.length}</div>
                     {here > 0 && <div style={{ fontFamily:"var(--mono)", fontSize:9, color:"var(--orange)", marginTop:4 }}>⬤ {here}팀 도전중</div>}
-                    <div style={{ fontFamily:"var(--mono)", fontSize:9, color:"var(--text2)", marginTop:2 }}>{room.points}pt</div>
+                    {/* <div style={{ fontFamily:"var(--mono)", fontSize:9, color:"var(--text2)", marginTop:2 }}>{room.points}pt</div> */}
                   </div>
                 );
               })}
