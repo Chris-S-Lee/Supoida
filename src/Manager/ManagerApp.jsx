@@ -1,9 +1,70 @@
 import { useState, useCallback } from "react";
-import { ROOMS_DATA } from "../shared/constants.js";
+import { ROOMS_DATA, INIT_TEAMS } from "../shared/constants.js"; // INIT_TEAMS 추가
 import { Header, Leaderboard, Toast } from "../shared/components.jsx";
 import { useSharedStore } from "../shared/store.js";
 
-const EMOJIS = ["🌟","🔥","💎","⚡","🌊","🍀","🎯","🚀","🦊","🐉","🎪","🔮"];
+const EMOJIS = ["🌟","🔥","💎","⚡","🌊","🍀","🎯","🚀","FOX","🐉","🎪","🔮"];
+
+// ── 관리자 전용 액션 버튼 컴포넌트 ──────────────────────────────────────────
+function AdminActionPanel({ team, onOverride, totalRooms }) {
+  const sendAlert = (msg, type = "info") => {
+    // onOverride를 통해 팀 데이터에 alert 필드를 심어 학생에게 전달
+    onOverride(team.id, { 
+      alert: { msg, type, ts: Date.now() } 
+    });
+  };
+
+  const actionBtnStyle = (color) => ({
+    padding: "6px 4px", fontSize: "10px", fontFamily: "var(--mono)",
+    background: "transparent", border: `1px solid ${color}`, color: color,
+    borderRadius: "4px", cursor: "pointer", transition: "all 0.2s",
+    flex: "1 1 30%"
+  });
+
+  return (
+    <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)", display: "flex", flexWrap: "wrap", gap: 6 }}>
+      {/* 1. 부정행위 경고 */}
+      <button style={actionBtnStyle("#ff4d4d")} onClick={() => sendAlert("🚨 부정행위가 감지되었습니다! 주의하세요.", "warn")}>
+        ⚠️ 부정 경고
+      </button>
+
+      {/* 2-4. 단계별 힌트 제공 */}
+      <button style={actionBtnStyle("var(--green)")} onClick={() => sendAlert(`💡 [초급 힌트] ${ROOMS_DATA[team.currentRoom]?.label}: 문제의 조건을 다시 확인해보세요.`, "hint")}>
+        🌱 초급 힌트
+      </button>
+      <button style={actionBtnStyle("var(--gold)")} onClick={() => sendAlert(`💡 [중급 힌트] ${ROOMS_DATA[team.currentRoom]?.label}: 공식의 순서를 바꿔보세요.`, "hint")}>
+        🌿 중급 힌트
+      </button>
+      <button style={actionBtnStyle("var(--orange)")} onClick={() => sendAlert(`💡 [고급 힌트] ${ROOMS_DATA[team.currentRoom]?.label}: 정답은 ${ROOMS_DATA[team.currentRoom]?.answer.slice(0,1)}... 로 시작합니다.`, "hint")}>
+        🌳 고급 힌트
+      </button>
+
+      {/* 5. 문제 초기화 (해당 문제만 미완료 상태로 변경) */}
+      <button style={actionBtnStyle("var(--text2)")} onClick={() => {
+        if(window.confirm("이 팀이 풀고 있는 현재 문제를 초기화할까요?")) {
+          const newDone = (team.roomsDone || []).filter(id => id !== team.currentRoom);
+          onOverride(team.id, { roomsDone: newDone });
+          sendAlert("🔄 관리자가 현재 문제를 초기화했습니다. 다시 풀어보세요!");
+        }
+      }}>
+        🔄 문제 초기화
+      </button>
+
+      {/* 6. 비밀번호 1개 제공 (랜덤) */}
+      <button style={actionBtnStyle("var(--accent)")} onClick={() => {
+        const remaining = ROOMS_DATA.filter(r => !(team.roomsDone || []).includes(r.id));
+        if (remaining.length > 0) {
+          const randomRoom = remaining[Math.floor(Math.random() * remaining.length)];
+          const newDone = [...(team.roomsDone || []), randomRoom.id];
+          onOverride(team.id, { roomsDone: newDone });
+          sendAlert(`🔑 관리자가 보너스 비밀번호(${randomRoom.id + 1}번)를 해제했습니다!`, "success");
+        }
+      }}>
+        🔑 비번 제공
+      </button>
+    </div>
+  );
+}
 
 function TeamCard({ team, rank, onNameChange, onEmojiChange, onOverride }) {
   const [editingName, setEditingName] = useState(false);
@@ -83,10 +144,6 @@ function TeamCard({ team, rank, onNameChange, onEmojiChange, onOverride }) {
             </div>
           )}
         </div>
-
-        {/* <div style={{ fontFamily:"var(--mono)", fontSize:20, fontWeight:700, color:"var(--accent2)", flexShrink:0 }}>
-          {team.score}pt
-        </div> */}
       </div>
 
       <div style={{ marginBottom:14 }}>
@@ -121,9 +178,12 @@ function TeamCard({ team, rank, onNameChange, onEmojiChange, onOverride }) {
         })}
       </div>
 
-      <details style={{ marginTop:4 }}>
+      {/* 실시간 관리자 액션 패널 추가 */}
+      <AdminActionPanel team={team} onOverride={onOverride} totalRooms={total} />
+
+      {/* <details style={{ marginTop:12 }}>
         <summary style={{ fontFamily:"var(--mono)", fontSize:10, letterSpacing:1, color:"var(--text2)", cursor:"pointer", userSelect:"none", padding:"4px 0" }}>
-          ⚙ 수동 조정
+          ⚙ 고급 수동 조정
         </summary>
         <div style={{ marginTop:10, display:"flex", gap:8, flexWrap:"wrap" }}>
           <button
@@ -133,23 +193,13 @@ function TeamCard({ team, rank, onNameChange, onEmojiChange, onOverride }) {
             }}
             disabled={(team.roomsDone?.length ?? 0) >= ROOMS_DATA.length}
             style={{ ...smallBtn, opacity: (team.roomsDone?.length ?? 0) >= ROOMS_DATA.length ? 0.4 : 1 }}
-          >+ 다음 방 클리어</button>
-          <button
-            onClick={() => {
-              if (!team.roomsDone?.length) return;
-              const prev = team.roomsDone.slice(0, -1);
-              const lastRoom = team.roomsDone[team.roomsDone.length - 1];
-              onOverride(team.id, { roomsDone:prev, score: Math.max(0, (team.score||0) - ROOMS_DATA[lastRoom].points), currentRoom: prev.length > 0 ? prev[prev.length-1] : 0 });
-            }}
-            disabled={!(team.roomsDone?.length)}
-            style={{ ...smallBtn, borderColor:"rgba(255,107,107,0.4)", color:"var(--accent3)", opacity: !(team.roomsDone?.length) ? 0.4 : 1 }}
-          >− 마지막 방 취소</button>
+          >+ 강제 클리어</button>
           <button
             onClick={() => onOverride(team.id, { ...INIT_TEAMS.find(t => t.id === team.id), name: team.name, emoji: team.emoji, takenBy: team.takenBy })}
             style={{ ...smallBtn, borderColor:"rgba(255,149,0,0.4)", color:"var(--orange)" }}
-          >↺ 팀 리셋</button>
+          >↺ 팀 초기화</button>
         </div>
-      </details>
+      </details> */}
     </div>
   );
 }

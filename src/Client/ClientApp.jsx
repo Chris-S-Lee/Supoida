@@ -174,12 +174,12 @@ function RoomGrid({ solvedRooms, onRoomClick, teamColor }) {
 }
 
 // ── PasswordPanel ─────────────────────────────────────────────────────────────
-// 각 방(id 0~5) 클리어 시 answer[0]가 순서대로 공개
 const CORRECT_CODE = ROOMS_DATA.map(r => r.answer[0]).join("");
 
 function PasswordPanel({ solvedRooms, teamColor }) {
+  // 1. 상태 관리: inputCode로 통일
   const [inputCode, setInputCode] = useState("");
-  const [status, setStatus] = useState("idle"); // idle | correct | wrong
+  const [status, setStatus] = useState("idle");
 
   const digits = ROOMS_DATA.map(room => ({
     digit: room.answer[0],
@@ -189,8 +189,15 @@ function PasswordPanel({ solvedRooms, teamColor }) {
 
   const allRevealed = digits.every(d => d.revealed);
 
+  // 2. 입력 제한 로직 (숫자만, 6자리까지)
+  const handleInputChange = (e) => {
+    const val = e.target.value.replace(/[^0-9]/g, "").slice(0, 6);
+    setInputCode(val);
+    setStatus("idle");
+  };
+  
   const handleSubmit = () => {
-    if (inputCode.trim() === CORRECT_CODE) {
+    if (inputCode === CORRECT_CODE) {
       setStatus("correct");
     } else {
       setStatus("wrong");
@@ -210,7 +217,7 @@ function PasswordPanel({ solvedRooms, teamColor }) {
       flexDirection: "column",
       gap: 12,
     }}>
-      {/* 헤더 */}
+      {/* 헤더 부분 */}
       <div style={{ display:"flex", alignItems:"center", gap:8 }}>
         <span style={{ fontSize:15 }}>🔐</span>
         <span style={{ fontFamily:"var(--mono)", fontSize:9, letterSpacing:3, color:"var(--text2)" }}>SECRET PASSWORD</span>
@@ -219,9 +226,9 @@ function PasswordPanel({ solvedRooms, teamColor }) {
         </span>
       </div>
 
-      {/* 6자리 디지트 */}
+      {/* 3. 비밀번호 디지트 박스 (유지: 이미 공개된 번호가 여기에 보입니다) */}
       <div style={{ display:"flex", gap:8, justifyContent:"center" }}>
-        {digits.map(({ digit, revealed, room }, i) => (
+        {digits.map(({ digit, revealed, room }) => (
           <div key={room.id} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
             <div style={{
               width: 44, height: 54,
@@ -234,26 +241,23 @@ function PasswordPanel({ solvedRooms, teamColor }) {
               color: revealed ? color : "var(--text2)",
               boxShadow: revealed ? `0 0 12px ${color}33` : "none",
               transition:"all 0.4s cubic-bezier(0.34,1.56,0.64,1)",
-              animation: revealed ? "ptsPop 0.5s cubic-bezier(0.34,1.56,0.64,1)" : "none",
               position:"relative",
             }}>
               {revealed ? digit : "?"}
             </div>
-            {/* <div style={{ fontFamily:"var(--mono)", fontSize:10, color: revealed ? color : "var(--text2)" }}>
-              {room.icon}
-            </div> */}
           </div>
         ))}
       </div>
 
-      {/* 입력 */}
+      {/* 4. 입력창 (수정: 숫자 6자리 제한 적용) */}
       <div style={{ display:"flex", gap:8 }}>
         <input
+          type="text"
+          inputMode="numeric" // 모바일에서 숫자 키패드 호출
           value={inputCode}
-          onChange={e => { setInputCode(e.target.value); setStatus("idle"); }}
+          onChange={handleInputChange} // 정의한 함수 연결
           onKeyDown={e => e.key === "Enter" && handleSubmit()}
-          maxLength={10}
-          placeholder="비밀번호 입력..."
+          placeholder="숫자 6자리 입력"
           style={{
             flex:1, background:"var(--bg)",
             border:`1.5px solid ${status === "correct" ? "var(--green)" : status === "wrong" ? "var(--accent3)" : "var(--border)"}`,
@@ -280,20 +284,10 @@ function PasswordPanel({ solvedRooms, teamColor }) {
         </button>
       </div>
 
-      {/* 상태 메시지 */}
+      {/* 상태 메시지 부분 유지 */}
       {status === "correct" && (
-        <div style={{ fontFamily:"var(--mono)", fontSize:12, color:"var(--green)", textAlign:"center", padding:"8px", background:"rgba(0,255,136,0.07)", borderRadius:7, border:"1px solid rgba(0,255,136,0.2)", animation:"ptsPop 0.4s ease" }}>
+        <div style={{ fontFamily:"var(--mono)", fontSize:12, color:"var(--green)", textAlign:"center", padding:"8px", background:"rgba(0,255,136,0.07)", borderRadius:7, border:"1px solid rgba(0,255,136,0.2)" }}>
           🏆 정답! 방탈출 성공!
-        </div>
-      )}
-      {status === "wrong" && (
-        <div style={{ fontFamily:"var(--mono)", fontSize:11, color:"var(--accent3)", textAlign:"center" }}>
-          ❌ 틀렸습니다. 다시 시도해보세요.
-        </div>
-      )}
-      {status === "idle" && !allRevealed && (
-        <div style={{ fontFamily:"var(--mono)", fontSize:9, color:"var(--text2)", textAlign:"center", letterSpacing:1 }}>
-          방을 클리어할수록 비밀번호가 공개됩니다
         </div>
       )}
     </div>
@@ -303,12 +297,14 @@ function PasswordPanel({ solvedRooms, teamColor }) {
 // ── ProblemModal ──────────────────────────────────────────────────────────────
 function ProblemModal({ room, onClose, onSolve }) {
   const [answer, setAnswer]           = useState("");
-  const [hintVisible, setHintVisible] = useState(false);
-  const [hintUsed, setHintUsed]       = useState(false);
   const [status, setStatus]           = useState("idle");
   const inputRef = useRef(null);
 
-  useEffect(() => { const t = setTimeout(() => inputRef.current?.focus(), 300); return () => clearTimeout(t); }, []);
+  useEffect(() => { 
+    const t = setTimeout(() => inputRef.current?.focus(), 300); 
+    return () => clearTimeout(t); 
+  }, []);
+
   useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
@@ -318,16 +314,20 @@ function ProblemModal({ room, onClose, onSolve }) {
   const handleSubmit = () => {
     if (status === "correct") return;
     if (answer.trim() === room.answer) {
-      const pts = hintUsed ? Math.max(room.points - 10, 10) : room.points;
+      // 힌트 사용 변수가 없어졌으므로 기본 포인트를 그대로 전달합니다.
       setStatus("correct");
-      setTimeout(() => { onClose(); onSolve(room, pts); }, 700);
+      setTimeout(() => { onClose(); onSolve(room, room.points); }, 700);
     } else {
       setStatus("wrong");
       setTimeout(() => setStatus("idle"), 500);
     }
   };
 
-  const inputBorder = status === "correct" ? "1.5px solid var(--green)" : status === "wrong" ? "1.5px solid var(--accent3)" : "1.5px solid var(--border)";
+  const inputBorder = status === "correct" 
+    ? "1.5px solid var(--green)" 
+    : status === "wrong" 
+      ? "1.5px solid var(--accent3)" 
+      : "1.5px solid var(--border)";
 
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.85)", zIndex:100, display:"flex", alignItems:"center", justifyContent:"center", backdropFilter:"blur(4px)" }}>
@@ -338,7 +338,7 @@ function ProblemModal({ room, onClose, onSolve }) {
           <span style={{ fontSize:26 }}>{room.icon}</span>
           <div>
             <div style={{ fontFamily:"var(--mono)", fontSize:9, letterSpacing:3, color:"var(--accent)", marginBottom:3 }}>
-              ROOM {pad(room.id + 1)} · {room.points}pt
+              ROOM {pad(room.id + 1)}
             </div>
             <div style={{ fontSize:18, fontWeight:700 }}>{room.label}</div>
           </div>
@@ -365,16 +365,7 @@ function ProblemModal({ room, onClose, onSolve }) {
           >제출</button>
         </div>
 
-        <button
-          onClick={() => { setHintVisible(v => !v); setHintUsed(true); }}
-          style={{ fontFamily:"var(--mono)", fontSize:10, letterSpacing:1, padding:"6px 12px", border:"1px solid var(--border)", background:"transparent", color:"var(--text2)", cursor:"pointer", borderRadius:4 }}
-        >💡 힌트 {hintUsed ? "(−10pt)" : ""}</button>
-
-        {hintVisible && (
-          <div style={{ marginTop:12, padding:"11px 14px", background:"rgba(255,215,0,0.06)", border:"1px solid rgba(255,215,0,0.2)", borderRadius:6, fontFamily:"var(--mono)", fontSize:12, color:"var(--gold)", animation:"slideIn 0.2s ease" }}>
-            {room.hint}
-          </div>
-        )}
+        {/* 💡 힌트 버튼 및 힌트 출력 창 코드가 삭제되었습니다. */}
 
         <div style={{ marginTop:12, fontSize:13, fontWeight:500, minHeight:20, color: status === "correct" ? "var(--green)" : status === "wrong" ? "var(--accent3)" : "transparent" }}>
           {status === "correct" ? "🎉 정답입니다!" : status === "wrong" ? "❌ 틀렸습니다. 다시 시도해보세요!" : "."}
@@ -421,7 +412,7 @@ function Celebration({ room, pts, totalScore, onClose }) {
 
 // ── ClientApp ─────────────────────────────────────────────────────────────────
 export default function ClientApp() {
-  const { state, claimTeam, solveRoom, moveTeam, setTimerRunning, tickTimer, resetAll } = useSharedStore();
+  const { state, claimTeam, solveRoom, moveTeam, setTimerRunning, tickTimer } = useSharedStore();
 
   const sessionId = useRef(getOrCreateSessionId()).current;
   const [myTeamId, setMyTeamId]     = useState(() => {
@@ -494,7 +485,7 @@ export default function ClientApp() {
         timerSec={timerSec}
         timerRunning={timerRunning}
         onToggleTimer={() => setTimerRunning(!timerRunning)}
-        onReset={() => { if (window.confirm("모든 기록을 삭제할까요?")) resetAll(); }}
+        // onReset={() => { if (window.confirm("모든 기록을 삭제할까요?")) resetAll(); }}
       />
 
       <div style={{ display:"grid", gridTemplateColumns:"300px 1fr", flex:1, overflow:"hidden" }}>
@@ -505,14 +496,14 @@ export default function ClientApp() {
           <div style={{ position:"relative", zIndex:1, padding:"18px 24px", display:"flex", flexDirection:"column", gap:14 }}>
 
             {/* 팀 정보 */}
-            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-              <span style={{ fontFamily:"var(--mono)", fontSize:10, letterSpacing:3, color:"var(--text2)" }}>ROOMS</span>
+            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
+              <span style={{ fontSize:12, fontWeight:900, color:"var(--text2)", letterSpacing:1.5 }}>ROOMS</span>
               <span style={{
                 fontFamily:"var(--mono)", fontSize:11, padding:"3px 11px",
                 background:"rgba(0,212,170,0.1)", border:"1px solid rgba(0,212,170,0.28)",
                 borderRadius:16, color:"var(--accent2)",
               }}>
-                {myTeam.emoji} {myTeam.name} · {myTeam.score || 0}pt
+                {myTeam.emoji} {myTeam.name}
               </span>
               <span style={{ marginLeft:"auto", fontFamily:"var(--mono)", fontSize:10, color:"var(--text2)" }}>
                 {myRoomsDone.length}/{ROOMS_DATA.length} 클리어
