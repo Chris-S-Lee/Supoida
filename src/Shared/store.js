@@ -102,6 +102,23 @@ export function useSharedStore() {
     update(ref(db), { [`math_escape_game/teams/${teamId}/currentRoom`]: roomId });
   }, []);
 
+  const solveRoom = useCallback((teamId, roomId, pts) => {
+    if (!state) return;
+    const team = state.teams[teamId];
+    const doneList = team.roomsDone || [];
+    
+    // 이미 푼 방이 아니라면 목록에 추가하고 점수 업데이트
+    if (!doneList.includes(roomId)) {
+      const newDoneList = [...doneList, roomId];
+      const newScore = (team.score || 0) + pts;
+      
+      update(ref(db, `math_escape_game/teams/${teamId}`), {
+        roomsDone: newDoneList,
+        score: newScore
+      });
+    }
+  }, [state]);
+
     // ★ 중요: return 안에 아래 이름들이 모두 포함되어야 합니다.
     return { 
       state, 
@@ -112,6 +129,7 @@ export function useSharedStore() {
       tickTimer, 
       overrideTeam, 
       startTimerToTarget,
-      setTimerSeconds
+      setTimerSeconds,
+      solveRoom,
     };
   }

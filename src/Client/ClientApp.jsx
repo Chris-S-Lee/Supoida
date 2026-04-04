@@ -543,7 +543,7 @@ function HintChat({ hints }) {
 
 // ── ClientApp ─────────────────────────────────────────────────────────────────
 export default function ClientApp() {
-  const { state, overrideTeam, solveRoom, moveTeam, setTimerRunning, tickTimer,startTimerToTarget } = useSharedStore();
+  const { state, overrideTeam, solveRoom, moveTeam, setTimerRunning, tickTimer,startTimerToTarget, } = useSharedStore();
 
   
   const sessionId = useRef(getOrCreateSessionId()).current;

@@ -327,19 +327,19 @@ export default function ManagerApp() {
           <button onClick={() => setTimerSeconds(10 * 60)} style={{ fontSize: "11px" }}>10분</button>
           <button onClick={() => setTimerSeconds(30 * 60)} style={{ fontSize: "11px" }}>30분</button>
           <button onClick={() => setTimerSeconds(60 * 60)} style={{ fontSize: "11px" }}>60분</button>
-        </div>
-      </section>
-      
-      <div style={{ padding: "10px 25px", display: "flex", justifyContent: "flex-end" }}>
         <button 
           onClick={resetAll}
           style={{
             padding: "6px 12px", background: "transparent", color: "var(--text2)",
-            border: "1px solid var(--border)", borderRadius: "4px", cursor: "pointer", fontSize: "11px"
+            border: "1px solid var(--border)", borderRadius: "4px", cursor: "pointer", fontSize: "11px", marginLeft: "auto"
           }}
         >
           🔄 전체 데이터 리셋
         </button>
+        </div>
+      </section>
+      
+      <div style={{ padding: "10px 25px", display: "flex", justifyContent: "flex-end" }}>
       </div>
       <div style={{ display:"grid", gridTemplateColumns:"300px 1fr", flex:1, overflow:"hidden" }}>
         {/* myTeamId=null → 매니저는 "나" 표시 없음 */}
