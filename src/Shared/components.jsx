@@ -28,24 +28,55 @@ export function GridBg() {
 }
 
 // ── Header ───────────────────────────────────────────────────────────────────
-export function Header({ timerSec, timerRunning, onToggleTimer, onReset, rightSlot }) {
+export function Header({ timerSec, timerRunning, isAdmin, onToggleTimer, onStart1550 }) {
   return (
     <header style={{
-      height:60, background:"var(--surface)", borderBottom:"1px solid var(--border)",
-      display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 24px", flexShrink:0, zIndex:10
+      padding: "15px 25px", background: "var(--surface)", borderBottom: "1px solid var(--border)",
+      display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, zIndex: 100
     }}>
-      <div style={{ display:"flex", alignItems:"center", gap:20 }}>
-        <h1 style={{ fontSize:18, fontWeight:800, letterSpacing:2, color: "var(--accent)", margin:0 }}>MATH ESCAPE</h1>
-        <div style={{ display:"flex", alignItems:"center", gap:12, background:"rgba(0,0,0,0.2)", padding:"6px 16px", borderRadius:6, border:"1px solid var(--border)" }}>
-          <span style={{ fontSize:18 }}>{timerSec > 0 ? "⏱️" : "⌛"}</span>
-          <span style={{ fontFamily:"var(--mono)", fontSize:20, fontWeight:700, color: timerSec < 60 ? "var(--accent3)" : "#fff", width:80 }}>
-            {formatTime(timerSec)}
-          </span>
+      <div>
+        <h2 style={{ fontSize: 16, fontWeight: 800, color: "var(--accent)" }}>
+          {isAdmin ? "ADMIN PANEL" : "MATH ESCAPE"}
+        </h2>
+        <div style={{ fontSize: 10, color: "var(--text2)", fontFamily: "var(--mono)" }}>
+          {isAdmin ? "CONTROL MODE" : "LIVE STATUS"}
         </div>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        {rightSlot}
-        {onReset && <button onClick={onReset} style={{ ...btnStyle, background:"transparent", color:"var(--text2)" }}>RESET</button>}
+
+      <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
+        <div style={{ 
+          display: "flex", 
+          flexDirection: "column", // 세로로 배치 (버튼이 위, 시계가 아래)
+          alignItems: "flex-end", 
+          gap: "4px" 
+        }}>
+          {/* 관리자일 때만 시계 위에 버튼 노출 */}
+          {isAdmin && (
+            <button 
+              onClick={timerSec > 0 ? () => onToggleTimer(!timerRunning) : onStart1550}
+              style={{
+                background: timerRunning ? "rgba(255, 77, 77, 0.1)" : "rgba(0, 255, 136, 0.1)",
+                border: `1px solid ${timerRunning ? "#ff4d4d" : "#00ff88"}`,
+                color: timerRunning ? "#ff4d4d" : "#00ff88",
+                borderRadius: "4px", padding: "2px 8px",
+                cursor: "pointer", fontSize: "10px", fontWeight: "bold",
+                transition: "all 0.2s"
+              }}
+            >
+              {timerRunning ? "PAUSE ┃┃" : "START ▶"}
+            </button>
+          )}
+
+          {/* 시계 숫자 (위치 유지) */}
+          <div style={{ 
+            fontSize: 28, fontFamily: "var(--mono)", fontWeight: 800, 
+            color: timerSec < 300 ? "#ff4d4d" : "var(--text)",
+            display: "flex", alignItems: "center", gap: "8px"
+          }}>
+            <span style={{ fontSize: 16, opacity: 0.4 }}>⏳</span>
+            {Math.floor(timerSec / 60)}:{String(timerSec % 60).padStart(2, '0')}
+          </div>
+        </div>
       </div>
     </header>
   );

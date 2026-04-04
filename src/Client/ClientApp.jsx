@@ -7,6 +7,7 @@ import {
 import { Header, Leaderboard, Toast, GridBg } from "../shared/components.jsx";
 import { useSharedStore } from "../shared/store.js";
 
+
 // ── 세션 ID ────────────────────────────────────────────────────────────────
 function getOrCreateSessionId() {
   let id = localStorage.getItem("math_escape_session_id");
@@ -410,12 +411,143 @@ function Celebration({ room, pts, totalScore, onClose }) {
   );
 }
 
+// ── HintChat  ──────────────────────────────────────────────────────────────
+function HintChat({ hints }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedHint, setSelectedHint] = useState(null); // 크게 볼 힌트 상태
+  const scrollRef = useRef(null);
+
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [hints, isOpen]);
+
+  return (
+    <>
+      {/* 1. 플로팅 채팅 아이콘 */}
+      {!isOpen && (
+        <button 
+          onClick={() => setIsOpen(true)}
+          className="anim-float"
+          style={{
+            position: "fixed", bottom: 25, right: 25, width: 60, height: 60,
+            borderRadius: "50%", background: "var(--accent)", border: "none",
+            boxShadow: "0 8px 24px rgba(108,99,255,0.4)", cursor: "pointer", zIndex: 1001,
+            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28
+          }}
+        >
+          💬
+          {hints?.length > 0 && (
+            <div style={{ 
+              position: "absolute", top: -2, right: -2, background: "#ff4d4d", 
+              color: "#fff", fontSize: 11, fontWeight: 800, padding: "2px 7px", 
+              borderRadius: 12, border: "2px solid #0a0b14" 
+            }}>
+              {hints.length}
+            </div>
+          )}
+        </button>
+      )}
+
+      {/* 2. 우측 슬라이드 힌트 패널 */}
+      <div style={{
+        position: "fixed", top: 0, right: isOpen ? 0 : -340, width: 320, height: "100%",
+        background: "rgba(13, 14, 26, 0.95)", backdropFilter: "blur(10px)",
+        borderLeft: "1px solid var(--border)", transition: "right 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+        zIndex: 1002, display: "flex", flexDirection: "column", boxShadow: "-10px 0 30px rgba(0,0,0,0.5)"
+      }}>
+        {/* 헤더 및 닫기 버튼 */}
+        <div style={{ 
+          padding: "20px", borderBottom: "1px solid var(--border)", 
+          display: "flex", justifyContent: "space-between", alignItems: "center" 
+        }}>
+          <span style={{ fontWeight: 800, color: "var(--accent2)", fontSize: 16 }}>📜 힌트 히스토리</span>
+          <button 
+            onClick={() => setIsOpen(false)}
+            style={{ 
+              background: "none", border: "none", color: "var(--text2)", 
+              fontSize: 20, cursor: "pointer", padding: "5px" 
+            }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* 힌트 목록 */}
+        <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: "15px", display: "flex", flexDirection: "column", gap: 12 }}>
+          {hints && hints.length > 0 ? hints.map((h, i) => (
+            <div 
+              key={i} 
+              onClick={() => setSelectedHint(h)} // 클릭 시 확대
+              style={{
+                background: "rgba(255,255,255,0.05)", padding: "12px", borderRadius: "8px",
+                borderLeft: "4px solid var(--accent)", fontSize: 13, lineHeight: 1.6,
+                cursor: "zoom-in", transition: "transform 0.2s"
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = "translateX(-5px)"}
+              onMouseLeave={(e) => e.currentTarget.style.transform = "translateX(0)"}
+            >
+              <div style={{ color: "var(--text)", marginBottom: 6 }}>{h.msg}</div>
+              <div style={{ fontSize: 10, color: "var(--text2)", textAlign: "right" }}>
+                {new Date(h.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </div>
+            </div>
+          )) : (
+            <div style={{ color: "var(--text2)", textAlign: "center", marginTop: 60, fontSize: 14 }}>
+              아직 받은 힌트가 없습니다.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 3. 힌트 크게 보기 모달 (Overlay) */}
+      {selectedHint && (
+        <div 
+          onClick={() => setSelectedHint(null)}
+          style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", 
+            zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 20, animation: "fadeIn 0.2s ease"
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "var(--surface)", border: "2px solid var(--accent)",
+              padding: "40px 30px", borderRadius: "16px", maxWidth: 500, width: "100%",
+              textAlign: "center", boxShadow: "0 0 50px rgba(108,99,255,0.3)",
+              position: "relative"
+            }}
+          >
+            <button 
+              onClick={() => setSelectedHint(null)}
+              style={{ position: "absolute", top: 15, right: 15, background: "none", border: "none", color: "#666", fontSize: 20, cursor: "pointer" }}
+            >
+              ✕
+            </button>
+            <div style={{ fontSize: 40, marginBottom: 20 }}>💡</div>
+            <div style={{ 
+              fontSize: 20, fontWeight: 700, color: "#fff", lineHeight: 1.6, 
+              wordBreak: "keep-all", whiteSpace: "pre-wrap" 
+            }}>
+              {selectedHint.msg}
+            </div>
+            <div style={{ marginTop: 25, fontSize: 12, color: "var(--accent2)", fontFamily: "var(--mono)" }}>
+              RECEIVED AT {new Date(selectedHint.ts).toLocaleTimeString()}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 // ── ClientApp ─────────────────────────────────────────────────────────────────
 export default function ClientApp() {
-  const { state, claimTeam, solveRoom, moveTeam, setTimerRunning, tickTimer } = useSharedStore();
+  const { state, overrideTeam, solveRoom, moveTeam, setTimerRunning, tickTimer,startTimerToTarget } = useSharedStore();
 
+  
   const sessionId = useRef(getOrCreateSessionId()).current;
-  const [myTeamId, setMyTeamId]     = useState(() => {
+  const [myTeamId, setMyTeamId] = useState(() => {
     const saved = localStorage.getItem(SESSION_KEY);
     return saved !== null ? Number(saved) : null;
   });
@@ -457,13 +589,17 @@ export default function ClientApp() {
   //   );
   // }
 
+  
   const { teams, timerSec, timerRunning } = state;
   const myTeam = myTeamId !== null ? teams[myTeamId] : null;
 
   const handleClaim = (teamId, name) => {
-    claimTeam(teamId, name, sessionId);
-    localStorage.setItem(SESSION_KEY, String(teamId));
-    setMyTeamId(teamId);
+      // Firebase에 내가 이 팀을 찜했다는 정보를 보냅니다.
+      overrideTeam(teamId, { takenBy: sessionId });
+      
+      // 로컬 스토리지에 저장하고 상태 변경
+      localStorage.setItem(SESSION_KEY, String(teamId));
+      setMyTeamId(teamId);
   };
 
   const handleRoomClick = (id) => {
@@ -479,13 +615,41 @@ export default function ClientApp() {
   const safeTeams  = teams.map(t => ({ ...t, roomsDone: t.roomsDone || [] }));
   const myRoomsDone = myTeam.roomsDone || [];
 
+  // ClientApp.jsx 내 렌더링 부분 상단에 추가
+  const now = Date.now();
+  const isFrozen = myTeam.freezeUntil && now < myTeam.freezeUntil;
+  const freezeSec = isFrozen ? Math.ceil((myTeam.freezeUntil - now) / 1000) : 0;
+
+  // 정지 화면 UI
+  if (isFrozen) {
+    return (
+      <div style={{
+        position:"fixed", inset:0, background:"rgba(0,0,0,0.95)", zIndex:9999,
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        color: "#ff4d4d", textAlign: "center"
+      }}>
+        <div style={{ fontSize: 80 }}>🚫</div>
+        <h1 style={{ fontSize: 32, margin: "20px 0" }}>접속이 일시 정지되었습니다</h1>
+        <p style={{ color: "#eee", fontSize: 18 }}>부정행위로 인해 3분간 활동이 제한됩니다.</p>
+        <div style={{ 
+          fontSize: 60, fontWeight: 800, marginTop: 30, 
+          fontFamily: "var(--mono)", color: "#fff" 
+        }}>
+          {Math.floor(freezeSec / 60)}:{String(freezeSec % 60).padStart(2, '0')}
+        </div>
+      </div>
+    );
+  }
+
   return (
+    
     <div style={{ display:"flex", flexDirection:"column", height:"100vh", background:"var(--bg)" }}>
       <Header
-        timerSec={timerSec}
-        timerRunning={timerRunning}
-        onToggleTimer={() => setTimerRunning(!timerRunning)}
-        // onReset={() => { if (window.confirm("모든 기록을 삭제할까요?")) resetAll(); }}
+        timerSec={state?.timerSec || 0} 
+        timerRunning={state?.timerRunning || false} 
+        isAdmin={false} 
+        onToggleTimer={() => setTimerRunning(!state.timerRunning)}
+        onStart1550={startTimerToTarget} // ← 여기서 ReferenceError가 발생하지 않도록 위에서 잘 가져와야 함
       />
 
       <div style={{ display:"grid", gridTemplateColumns:"300px 1fr", flex:1, overflow:"hidden" }}>
@@ -543,6 +707,8 @@ export default function ClientApp() {
         />
       )}
       {toast && <Toast msg={toast} onDone={() => setToast(null)} />}
+      <GridBg />
+      <HintChat hints={myTeam.hints} />
     </div>
   );
 }

@@ -6,58 +6,89 @@ import { useSharedStore } from "../shared/store.js";
 const EMOJIS = ["🌟","🔥","💎","⚡","🌊","🍀","🎯","🚀","FOX","🐉","🎪","🔮"];
 
 // ── 관리자 전용 액션 버튼 컴포넌트 ──────────────────────────────────────────
-function AdminActionPanel({ team, onOverride, totalRooms }) {
+function AdminActionPanel({ team, onOverride }) {
+  // 1. 알림 전송 공통 함수
   const sendAlert = (msg, type = "info") => {
-    // onOverride를 통해 팀 데이터에 alert 필드를 심어 학생에게 전달
     onOverride(team.id, { 
       alert: { msg, type, ts: Date.now() } 
     });
   };
 
+  // 2. 힌트 전송 로직 (채팅형)
+  const sendHint = (level) => {
+    const targetId = window.prompt("힌트를 줄 문제 번호를 입력하세요 (1~6):", team.currentRoom + 1);
+    const idx = parseInt(targetId) - 1;
+    
+    if (ROOMS_DATA[idx]) {
+      const room = ROOMS_DATA[idx];
+      let hintContent = "";
+      
+      if (level === "초") hintContent = `🌱 [${room.label} 초급] 문제의 조건을 다시 읽어보세요.`;
+      else if (level === "중") hintContent = `🌿 [${room.label} 중급] ${room.hint.slice(0, 15)}...`;
+      else if (level === "고") hintContent = `🌳 [${room.label} 고급] 정답 힌트: ${room.hint}`;
+
+      const prevHints = team.hints || [];
+      onOverride(team.id, { 
+        hints: [...prevHints, { msg: hintContent, ts: Date.now(), roomId: idx }],
+        alert: { msg: "새로운 힌트가 도착했습니다!", type: "hint", ts: Date.now() }
+      });
+    }
+  };
+
+  // ★ 오류의 원인: 이 함수가 함수 블록 { } 안에 선언되어 있어야 합니다.
   const actionBtnStyle = (color) => ({
-    padding: "6px 4px", fontSize: "10px", fontFamily: "var(--mono)",
-    background: "transparent", border: `1px solid ${color}`, color: color,
-    borderRadius: "4px", cursor: "pointer", transition: "all 0.2s",
+    padding: "6px 4px",
+    fontSize: "10px",
+    fontFamily: "var(--mono)",
+    background: "transparent",
+    border: `1px solid ${color}`,
+    color: color,
+    borderRadius: "4px",
+    cursor: "pointer",
+    transition: "all 0.2s",
     flex: "1 1 30%"
   });
 
   return (
     <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)", display: "flex", flexWrap: "wrap", gap: 6 }}>
-      {/* 1. 부정행위 경고 */}
-      <button style={actionBtnStyle("#ff4d4d")} onClick={() => sendAlert("🚨 부정행위가 감지되었습니다! 주의하세요.", "warn")}>
+      
+      {/* 부정 경고 버튼 (3분 정지) */}
+      <button style={actionBtnStyle("#ff4d4d")} onClick={() => {
+        const freezeTime = Date.now() + (3 * 60 * 1000);
+        onOverride(team.id, { 
+          freezeUntil: freezeTime,
+          alert: { msg: "🚨 부정행위 감지로 3분간 활동이 정지됩니다.", type: "warn", ts: Date.now() }
+        });
+      }}>
         ⚠️ 부정 경고
       </button>
 
-      {/* 2-4. 단계별 힌트 제공 */}
-      <button style={actionBtnStyle("var(--green)")} onClick={() => sendAlert(`💡 [초급 힌트] ${ROOMS_DATA[team.currentRoom]?.label}: 문제의 조건을 다시 확인해보세요.`, "hint")}>
-        🌱 초급 힌트
-      </button>
-      <button style={actionBtnStyle("var(--gold)")} onClick={() => sendAlert(`💡 [중급 힌트] ${ROOMS_DATA[team.currentRoom]?.label}: 공식의 순서를 바꿔보세요.`, "hint")}>
-        🌿 중급 힌트
-      </button>
-      <button style={actionBtnStyle("var(--orange)")} onClick={() => sendAlert(`💡 [고급 힌트] ${ROOMS_DATA[team.currentRoom]?.label}: 정답은 ${ROOMS_DATA[team.currentRoom]?.answer.slice(0,1)}... 로 시작합니다.`, "hint")}>
-        🌳 고급 힌트
-      </button>
+      {/* 힌트 버튼들 */}
+      <button style={actionBtnStyle("var(--green)")} onClick={() => sendHint("초")}>🌱 초급</button>
+      <button style={actionBtnStyle("var(--gold)")} onClick={() => sendHint("중")}>🌿 중급</button>
+      <button style={actionBtnStyle("var(--orange)")} onClick={() => sendHint("고")}>🌳 고급</button>
 
-      {/* 5. 문제 초기화 (해당 문제만 미완료 상태로 변경) */}
+      {/* 문제 초기화 */}
       <button style={actionBtnStyle("var(--text2)")} onClick={() => {
-        if(window.confirm("이 팀이 풀고 있는 현재 문제를 초기화할까요?")) {
-          const newDone = (team.roomsDone || []).filter(id => id !== team.currentRoom);
+        const targetId = window.prompt("초기화할 문제 번호(1~6):");
+        const idx = parseInt(targetId) - 1;
+        if (ROOMS_DATA[idx]) {
+          const newDone = (team.roomsDone || []).filter(id => id !== idx);
           onOverride(team.id, { roomsDone: newDone });
-          sendAlert("🔄 관리자가 현재 문제를 초기화했습니다. 다시 풀어보세요!");
+          sendAlert(`🔄 ${targetId}번 문제가 초기화되었습니다.`);
         }
       }}>
-        🔄 문제 초기화
+        🔄 초기화
       </button>
 
-      {/* 6. 비밀번호 1개 제공 (랜덤) */}
+      {/* 비번 제공 (정답 처리) */}
       <button style={actionBtnStyle("var(--accent)")} onClick={() => {
-        const remaining = ROOMS_DATA.filter(r => !(team.roomsDone || []).includes(r.id));
-        if (remaining.length > 0) {
-          const randomRoom = remaining[Math.floor(Math.random() * remaining.length)];
-          const newDone = [...(team.roomsDone || []), randomRoom.id];
+        const targetId = window.prompt("비번 공개할 문제 번호(1~6):");
+        const idx = parseInt(targetId) - 1;
+        if (ROOMS_DATA[idx]) {
+          const newDone = Array.from(new Set([...(team.roomsDone || []), idx]));
           onOverride(team.id, { roomsDone: newDone });
-          sendAlert(`🔑 관리자가 보너스 비밀번호(${randomRoom.id + 1}번)를 해제했습니다!`, "success");
+          sendAlert(`🔑 ${targetId}번 정답 처리 및 비번이 해제되었습니다!`, "success");
         }
       }}>
         🔑 비번 제공
@@ -237,8 +268,9 @@ function GameStats({ teams }) {
 
 export default function ManagerApp() {
   // 1. 모든 훅은 반드시 최상단에 위치해야 합니다.
-  const { state,updateTeamScore,resetAll,setTimerRunning,tickTimer,overrideTeam } = useSharedStore();
+  const { state,updateTeamScore,resetAll,setTimerRunning,setTimerSeconds, tickTimer,overrideTeam, startTimerToTarget } = useSharedStore();
   const [toast, setToast] = useState(null);
+  const [inputMin, setInputMin] = useState(80); // 기본값 80분
 
   const handleUpdateScore = useCallback((teamId, amt) => {
     updateTeamScore(teamId, amt); // 상단에서 가져온 이름과 일치시킴
@@ -268,23 +300,47 @@ export default function ManagerApp() {
 
   return (
     <>
-      <Header
-        timerSec={timerSec}
-        timerRunning={timerRunning}
-        onToggleTimer={() => setTimerRunning(!timerRunning)}
-        onReset={handleReset}
-        rightSlot={
-          <>
-            <span style={{ fontFamily:"var(--mono)", fontSize:10, letterSpacing:2, padding:"5px 12px", background:"rgba(108,99,255,0.15)", border:"1px solid rgba(108,99,255,0.4)", borderRadius:4, color:"var(--accent)" }}>
-              ⚙ MANAGER
-            </span>
-            <a href="/" style={{ fontFamily:"var(--mono)", fontSize:10, letterSpacing:1, padding:"6px 14px", border:"1px solid var(--border)", borderRadius:4, color:"var(--text2)", textDecoration:"none" }}>
-              ← 클라이언트
-            </a>
-          </>
-        }
+      <Header 
+        timerSec={state?.timerSec || 0} 
+        timerRunning={state?.timerRunning || false} 
+        isAdmin={true}
+        onToggleTimer={() => setTimerRunning(!state.timerRunning)}
       />
 
+      <section style={{ padding: "20px", background: "var(--surface)", margin: "10px", borderRadius: "8px" }}>
+        <h3 style={{ color: "#fff", marginBottom: "10px" }}>타이머 수동 설정</h3>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <input 
+            type="number" 
+            value={inputMin} 
+            onChange={(e) => setInputMin(e.target.value)}
+            style={{ width: "60px", padding: "8px", borderRadius: "4px", border: "1px solid var(--border)", background: "#000", color: "#fff" }}
+          />
+          <span style={{ color: "#fff" }}>분으로</span>
+          <button 
+            onClick={() => setTimerSeconds(inputMin * 60)}
+            style={{ padding: "8px 16px", background: "var(--accent)", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }}
+          >
+            설정 적용
+          </button>
+          
+          <button onClick={() => setTimerSeconds(10 * 60)} style={{ fontSize: "11px" }}>10분</button>
+          <button onClick={() => setTimerSeconds(30 * 60)} style={{ fontSize: "11px" }}>30분</button>
+          <button onClick={() => setTimerSeconds(60 * 60)} style={{ fontSize: "11px" }}>60분</button>
+        </div>
+      </section>
+      
+      <div style={{ padding: "10px 25px", display: "flex", justifyContent: "flex-end" }}>
+        <button 
+          onClick={resetAll}
+          style={{
+            padding: "6px 12px", background: "transparent", color: "var(--text2)",
+            border: "1px solid var(--border)", borderRadius: "4px", cursor: "pointer", fontSize: "11px"
+          }}
+        >
+          🔄 전체 데이터 리셋
+        </button>
+      </div>
       <div style={{ display:"grid", gridTemplateColumns:"300px 1fr", flex:1, overflow:"hidden" }}>
         {/* myTeamId=null → 매니저는 "나" 표시 없음 */}
         <Leaderboard teams={safeTeams} myTeamId={null} />

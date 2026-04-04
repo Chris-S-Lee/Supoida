@@ -11,24 +11,38 @@ export function useSharedStore() {
     return onValue(stateRef, (snapshot) => {
       const data = snapshot.val();
       if (!data) {
-        set(stateRef, { teams: INIT_TEAMS, timerSec: TOTAL_TIME, timerRunning: false, resetToken: Date.now() });
+        set(stateRef, { 
+          teams: INIT_TEAMS, 
+          timerSec: TOTAL_TIME, 
+          timerRunning: false, 
+          resetToken: Date.now() 
+        });
       } else {
         setStateInner(data);
       }
     });
   }, []);
 
-  // 함수 이름을 updateTeamScore로 통일합니다.
+  // 1. 점수 및 상태 업데이트 함수
   const updateTeamScore = useCallback((teamId, amt) => {
     if (!state) return;
     const currentScore = state.teams[teamId].score || 0;
     update(ref(db), { [`math_escape_game/teams/${teamId}/score`]: currentScore + amt });
   }, [state]);
 
+  // 2. 초기화 함수 (오류 해결을 위해 확실히 정의)
   const resetAll = useCallback(() => {
+    if (!window.confirm("모든 게임 데이터를 초기화하시겠습니까?")) return;
     const fresh = {
-      // name을 ""로 초기화하지 않고 INIT_TEAMS의 고정 이름을 사용
-      teams: INIT_TEAMS.map(t => ({ ...t, score: 0, roomsDone: [], takenBy: "" })),
+      teams: INIT_TEAMS.map(t => ({ 
+        ...t, 
+        score: 0, 
+        roomsDone: [], 
+        takenBy: "", 
+        currentRoom: 0, 
+        hints: [], 
+        freezeUntil: 0 
+      })),
       timerSec: TOTAL_TIME,
       timerRunning: false,
       resetToken: Date.now()
@@ -36,69 +50,68 @@ export function useSharedStore() {
     set(ref(db, 'math_escape_game'), fresh);
   }, []);
 
-  // ── Actions ──────────────────────────────────
-  
-  const claimTeam = useCallback((teamId, nickname, sessionId) => {
-    update(ref(db), {
-      [`math_escape_game/teams/${teamId}/takenBy`]: sessionId,
-      // name은 이미 지정되어 있으므로 덮어쓰지 않음
+  // 3. 타이머 관련 함수
+
+  const setTimerSeconds = useCallback((seconds) => {
+    update(ref(db), { 
+      "math_escape_game/timerSec": seconds,
+      "math_escape_game/timerRunning": false // 설정 시 일단 정지
     });
-  }, []);
-
-  const updateTeamName = useCallback((teamId, name) => {
-    update(ref(db), { [`math_escape_game/teams/${teamId}/name`]: name });
-  }, []);
-
-  const updateTeamEmoji = useCallback((teamId, emoji) => {
-    update(ref(db), { [`math_escape_game/teams/${teamId}/emoji`]: emoji });
-  }, []);
-
-  const solveRoom = useCallback((teamId, roomId, pts) => {
-    if (!state) return;
-    const team = state.teams[teamId];
-    if (!team) return;
-    const newRoomsDone = [...(team.roomsDone || []), roomId];
-    const updates = {};
-    updates[`math_escape_game/teams/${teamId}/score`]      = (team.score || 0) + pts;
-    updates[`math_escape_game/teams/${teamId}/roomsDone`]  = newRoomsDone;
-    updates[`math_escape_game/teams/${teamId}/currentRoom`]= roomId;
-    update(ref(db), updates);
-  }, [state]);
-
-  const moveTeam = useCallback((teamId, roomId) => {
-    update(ref(db), { [`math_escape_game/teams/${teamId}/currentRoom`]: roomId });
   }, []);
 
   const setTimerRunning = useCallback((running) => {
     update(ref(db), { "math_escape_game/timerRunning": running });
   }, []);
 
-  /** 타이머 tick — 매니저 또는 클라이언트 중 한 곳에서만 호출해야 함 */
+  // ★ 15:50 종료 타이머 시작 함수
+  const startTimerToTarget = useCallback(() => {
+      const now = new Date();
+      const target = new Date();
+      
+      // 오후 3시 50분 설정 (15시 50분)
+      target.setHours(15, 50, 0, 0);
+
+      // 만약 지금이 3시 50분보다 늦다면, 내일 3시 50분으로 설정
+      if (now > target) {
+        target.setDate(target.getDate() + 1);
+      }
+
+      // 남은 시간 계산 (초 단위)
+      const diffSec = Math.floor((target - now) / 1000);
+
+      // Firebase 업데이트 (시간 설정 및 타이머 시작)
+      update(ref(db), { 
+        "math_escape_game/timerRunning": true,
+        "math_escape_game/timerSec": diffSec 
+      });
+  }, []);
+
   const tickTimer = useCallback(() => {
     if (!state || !state.timerRunning || state.timerSec <= 0) return;
     update(ref(db), { "math_escape_game/timerSec": state.timerSec - 1 });
   }, [state]);
 
+  // 4. 팀 데이터 직접 수정 (힌트, 정지 등)
   const overrideTeam = useCallback((teamId, patch) => {
     if (!state) return;
-    const updates = {};
-    Object.keys(patch).forEach(key => {
-      updates[`math_escape_game/teams/${teamId}/${key}`] = patch[key];
-    });
-    update(ref(db), updates);
+    const teamRef = ref(db, `math_escape_game/teams/${teamId}`);
+    update(teamRef, patch);
   }, [state]);
 
-  return {
-    state,
-    claimTeam,
-    resetAll,
-    updateTeamName,
-    updateTeamEmoji,
-    solveRoom,
-    moveTeam,
-    setTimerRunning,
-    tickTimer,
-    resetAll,
-    overrideTeam,
-  };
-}
+  const moveTeam = useCallback((teamId, roomId) => {
+    update(ref(db), { [`math_escape_game/teams/${teamId}/currentRoom`]: roomId });
+  }, []);
+
+    // ★ 중요: return 안에 아래 이름들이 모두 포함되어야 합니다.
+    return { 
+      state, 
+      updateTeamScore, 
+      moveTeam, 
+      resetAll, 
+      setTimerRunning, 
+      tickTimer, 
+      overrideTeam, 
+      startTimerToTarget,
+      setTimerSeconds
+    };
+  }
