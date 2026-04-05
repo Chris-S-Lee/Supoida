@@ -127,7 +127,7 @@ function RoomGrid({ solvedRooms, onRoomClick, teamColor }) {
 // ── PasswordPanel ─────────────────────────────────────────────
 const CORRECT_CODE = ROOMS_DATA.map(r => r.pw).join("");
 
-function PasswordPanel({ solvedRooms, teamColor, onAllCorrect }) {
+function PasswordPanel({ solvedRooms, teamColor, onAllCorrect, teamId, onOverride, teamName }) {
   const [inputCode, setInputCode] = useState("");
   const [status, setStatus] = useState("idle");
   const notifiedRef = useRef(false);
@@ -141,9 +141,24 @@ function PasswordPanel({ solvedRooms, teamColor, onAllCorrect }) {
   };
 
   const handleSubmit = () => {
+    // CORRECT_CODE는 constants.js에서 정의된 6자리 정답입니다.
     if (inputCode === CORRECT_CODE) {
       setStatus("correct");
-      if (!notifiedRef.current) { notifiedRef.current = true; onAllCorrect && onAllCorrect(); }
+      if (!notifiedRef.current) {
+        notifiedRef.current = true;
+        
+        // ★ 핵심: 관리자(DB)에 완료 상태와 알림 메시지를 보냅니다.
+        onOverride(teamId, { 
+          isPart1Finished: true, 
+          alert: { 
+            msg: `🎉 ${teamName} 팀이 파트 1 비밀번호를 풀었습니다!`, 
+            type: "info", 
+            ts: Date.now() 
+          } 
+        });
+        
+        onAllCorrect && onAllCorrect();
+      }
     } else {
       setStatus("wrong");
       setTimeout(() => setStatus("idle"), 1200);
@@ -818,7 +833,14 @@ export default function ClientApp() {
               </span>
             </div>
             <RoomGrid solvedRooms={myRoomsDone} onRoomClick={handleRoomClick} teamColor={myTeam.color} />
-            <PasswordPanel solvedRooms={myRoomsDone} teamColor={myTeam.color} onAllCorrect={() => setWaitingForPart2(true)} />
+            <PasswordPanel 
+              solvedRooms={myRoomsDone} 
+              teamColor={myTeam.color} 
+              teamId={myTeam.id}       // 추가
+              teamName={myTeam.name}   // 추가
+              onOverride={overrideTeam} // 추가 (useSharedStore에서 가져온 함수)
+              onAllCorrect={() => setWaitingForPart2(true)} 
+            />
           </div>
         </div>
       </div>

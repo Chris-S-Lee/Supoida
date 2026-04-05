@@ -7,6 +7,9 @@ const EMOJIS = ["🌟","🔥","💎","⚡","🌊","🍀","🎯","🚀","FOX","�
 
 // ── AdminActionPanel ──────────────────────────────────────────
 function AdminActionPanel({ team, onOverride, setToast }) {
+  const isPhase2 = Boolean(team.phase2);
+  const canStartPhase2 = Boolean(team.isPart1Finished); // 파트 1 완료 여부 확인
+
   const sendHint = (level) => {
     const targetId = window.prompt("힌트를 줄 문제 번호를 입력하세요 (1~6):", team.currentRoom+1);
     if (!targetId) return;
@@ -30,19 +33,21 @@ function AdminActionPanel({ team, onOverride, setToast }) {
     cursor:"pointer", transition:"all 0.2s", flex:"1 1 30%"
   });
 
-  const isPhase2 = Boolean(team.phase2);
-
   return (
     <div style={{ marginTop:12, paddingTop:12, borderTop:"1px solid var(--border)", display:"flex", flexWrap:"wrap", gap:6 }}>
       {/* 공습경보 / 파트2 버튼 */}
       <button
+        // 파트 1을 완료하지 않았고, 아직 페이즈 2가 시작되지 않은 경우 버튼 비활성화
+        disabled={!canStartPhase2 && !isPhase2}
         style={{
-          ...actionBtnStyle(isPhase2 ? "#00ff88" : "#ff4d4d"),
+          ...actionBtnStyle(isPhase2 ? "#00ff88" : canStartPhase2 ? "#ff4d4d" : "#555"),
           flex:"1 1 100%",
           fontWeight:900,
           letterSpacing:2,
           fontSize:11,
-          background: isPhase2 ? "rgba(0,255,136,0.08)" : "rgba(255,77,77,0.08)",
+          background: isPhase2 ? "rgba(0,255,136,0.08)" : canStartPhase2 ? "rgba(255,77,77,0.08)" : "rgba(85,85,85,0.08)",
+          cursor: (canStartPhase2 || isPhase2) ? "pointer" : "not-allowed", // 커서 모양 변경
+          opacity: (canStartPhase2 || isPhase2) ? 1 : 0.5,
         }}
         onClick={() => {
           if (isPhase2) {
@@ -54,7 +59,11 @@ function AdminActionPanel({ team, onOverride, setToast }) {
           }
         }}
       >
-        {isPhase2 ? "✅ PART2 진행중 (클릭=해제)" : "🚨 공습경보 발동 → PART 2"}
+        {isPhase2 
+          ? "✅ PART2 진행중 (클릭=해제)" 
+          : canStartPhase2 
+            ? "🚨 공습경보 발동 → PART 2" 
+            : "🔒 파트 1 비밀번호 대기 중"}
       </button>
 
       {/* 부정 경고 */}
@@ -218,13 +227,6 @@ export default function ManagerApp() {
   const sorted = [...teams].sort((a,b) => b.score-a.score);
   const safeTeams = teams.map(t => ({ ...t, roomsDone:t.roomsDone||[] }));
 
-  // 일괄 공습경보 버튼
-  const handleAllPhase2 = () => {
-    if (!window.confirm("모든 팀에게 공습경보를 발동하고 파트2를 시작하시겠습니까?")) return;
-    teams.forEach(t => overrideTeam(t.id, { phase2:true }));
-    setToast("전체 팀 파트2 시작!");
-  };
-
   return (
     <>
       <Header
@@ -246,11 +248,7 @@ export default function ManagerApp() {
           <button onClick={() => setTimerSeconds(30*60)} style={{ fontSize:"11px" }}>30분</button>
           <button onClick={() => setTimerSeconds(60*60)} style={{ fontSize:"11px" }}>60분</button>
 
-          {/* 전체 파트2 버튼 */}
-          <button onClick={handleAllPhase2} style={{ padding:"8px 16px", background:"rgba(255,77,77,0.15)", border:"1px solid #ff4d4d", color:"#ff4d4d", borderRadius:"4px", cursor:"pointer", fontSize:12, fontWeight:900, letterSpacing:1, marginLeft:"auto" }}>
-            🚨 전체 공습경보 발동
-          </button>
-          <button onClick={resetAll} style={{ padding:"6px 12px", background:"transparent", color:"var(--text2)", border:"1px solid var(--border)", borderRadius:"4px", cursor:"pointer", fontSize:"11px" }}>
+          <button onClick={resetAll} style={{ padding:"6px 12px", background:"transparent", color:"var(--text2)", border:"1px solid var(--border)", borderRadius:"4px", cursor:"pointer", fontSize:"11px", marginLeft:"auto" }}>
             🔄 전체 데이터 리셋
           </button>
         </div>

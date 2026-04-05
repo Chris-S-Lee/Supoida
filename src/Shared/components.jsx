@@ -86,10 +86,9 @@ export function Header({ timerSec, timerRunning, isAdmin, onToggleTimer, onStart
 export function Leaderboard({ teams, myTeamId = null }) {
   const [prevRanks, setPrevRanks] = useState({}); 
   const [diffs, setDiffs] = useState({});         
-  const total = ROOMS_DATA.length;
   const ROW_H = 50; 
 
-  // 1. 현재 순위 계산 (공동 순위 로직: 점수가 같으면 같은 순위)
+  // 1. 현재 순위 계산 (공동 순위 로직)
   const sorted = [...teams].sort((a, b) => {
     const bCount = b.roomsDone?.length ?? 0;
     const aCount = a.roomsDone?.length ?? 0;
@@ -107,7 +106,7 @@ export function Leaderboard({ teams, myTeamId = null }) {
     return { ...team, rank: lastRank };
   });
 
-  // 2. 순위 변동 감지 (상대 팀과 비교하여 '순위 숫자'가 변했을 때만)
+  // 2. 순위 변동 감지
   useEffect(() => {
     const newDiffs = { ...diffs };
     let hasUpdate = false;
@@ -115,15 +114,10 @@ export function Leaderboard({ teams, myTeamId = null }) {
     rankedTeams.forEach((team) => {
       const oldRank = prevRanks[team.id];
       const newRank = team.rank;
-
-      // 이전 기록이 있고, 실제로 순위 숫자(Rank)가 변한 경우 (상대를 추월하거나 추월당함)
       if (oldRank !== undefined && oldRank !== newRank) {
-        // 숫자가 작아지면(예: 3위 -> 1위) UP, 커지면 DOWN
         const direction = newRank < oldRank ? "UP" : "DOWN";
         newDiffs[team.id] = direction;
         hasUpdate = true;
-
-        // 5초 후 화살표 제거
         setTimeout(() => {
           setDiffs(curr => {
             const copy = { ...curr };
@@ -134,11 +128,9 @@ export function Leaderboard({ teams, myTeamId = null }) {
       }
     });
 
-    // 현재 계산된 순위들을 다음 비교를 위해 저장
     const nextRanks = {};
     rankedTeams.forEach(t => { nextRanks[t.id] = t.rank; });
     setPrevRanks(nextRanks);
-
     if (hasUpdate) setDiffs(newDiffs);
   }, [teams]);
 
@@ -160,6 +152,10 @@ export function Leaderboard({ teams, myTeamId = null }) {
           const isMe = team.id === myTeamId;
           const solvedCount = team.roomsDone?.length ?? 0;
           const diff = diffs[team.id];
+          
+          // 파트 2 여부에 따라 분모(Total) 결정 (수정된 부분)
+          const isPhase2 = Boolean(team.phase2);
+          const currentTotal = isPhase2 ? 9 : ROOMS_DATA.length;
 
           return (
             <div key={team.id} style={{
@@ -170,7 +166,6 @@ export function Leaderboard({ teams, myTeamId = null }) {
               padding: "6px 18px", gap: 12,
               background: isMe ? "rgba(108,99,255,0.08)" : "transparent",
             }}>
-              {/* 순위 영역: 변동 시 화살표, 아닐 시 숫자 */}
               <div style={{ 
                 width: 32, display: "flex", justifyContent: "center", 
                 fontFamily: "var(--mono)", fontSize: 16, fontWeight: 800 
@@ -184,24 +179,23 @@ export function Leaderboard({ teams, myTeamId = null }) {
                 )}
               </div>
 
-              {/* 팀 정보 & 3/7 진행도 */}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 800, color: team.color }}>
-                  {team.name || `팀 ${team.id + 1}`}
+                  {team.name || `팀 ${team.id + 1}`} {isPhase2 && "🚨"}
                 </div>
-                {/* 진행도 바 */}
                 <div style={{ flex: 1, height: 3, background: "var(--surface3)", borderRadius: 2, marginTop: 6 }}>
-                  <div style={{ height: "100%", background: team.color, width: `${(solvedCount/total)*100}%`, transition: "width 1s" }} />
+                  {/* 분모(currentTotal) 반영 */}
+                  <div style={{ height: "100%", background: team.color, width: `${Math.min((solvedCount/currentTotal)*100, 100)}%`, transition: "width 1s" }} />
                 </div>
               </div>
 
-              {/* 포인트(점수)가 있던 자리에 진행도(분수) 표시 */}
               <div style={{ 
                 fontFamily: "var(--mono)", fontSize: 13, fontWeight: 700, 
-                color: solvedCount === total ? "var(--green)" : "var(--text)", 
+                color: solvedCount >= currentTotal ? "var(--green)" : "var(--text)", 
                 textAlign: "right", minWidth: 45 
               }}>
-                {solvedCount}/{total}
+                {/* X/9 또는 X/7 형식 표시 */}
+                {solvedCount}/{currentTotal}
               </div>
             </div>
           );
