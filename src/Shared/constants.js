@@ -53,6 +53,31 @@ export const ROOMS_DATA = [
 
 export const CORRIDORS = [];
 
+export const BRIDGE_PUZZLE_DATA = {
+  islands: [
+    { id: 0, r: 1, c: 1, count: 3 },
+    { id: 1, r: 1, c: 5, count: 4 },
+    { id: 2, r: 1, c: 8, count: 2 },
+    { id: 3, r: 4, c: 1, count: 2 },
+    { id: 4, r: 4, c: 5, count: 6 },
+    { id: 5, r: 4, c: 8, count: 3 },
+    { id: 6, r: 8, c: 1, count: 1 },
+    { id: 7, r: 8, c: 5, count: 3 },
+    { id: 8, r: 8, c: 8, count: 2 },
+  ]
+};
+
+// 시가쿠 10x10용 데이터 (예시)
+export const SHIKAKU_10X10 = {
+  size: 10,
+  numbers: [
+    { r: 0, c: 0, n: 4 }, { r: 0, c: 5, n: 6 }, { r: 1, c: 2, n: 10 },
+    { r: 2, c: 8, n: 4 }, { r: 3, c: 4, n: 12 }, { r: 5, c: 1, n: 8 },
+    { r: 6, c: 6, n: 9 }, { r: 7, c: 3, n: 15 }, { r: 8, c: 9, n: 2 },
+    { r: 9, c: 0, n: 5 }, { r: 9, c: 5, n: 25 }
+  ]
+};
+
 // ── 팀 설정 (10팀, 아이콘 없음) ─────────────────────────────────────────────
 const TEAM_COLORS = [
   "#6c63ff", // 1팀 — 보라
