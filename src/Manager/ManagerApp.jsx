@@ -133,7 +133,7 @@ function TeamCard({ team, rank, onNameChange, onEmojiChange, onOverride }) {
           {showEmoji && (
             <div style={{
               position:"absolute", top:48, left:0, zIndex:50,
-              background:"var(--surface2)", border:"1px solid var(--border)", borderRadius:8,
+              background:"var(--surface3)", border:"1px solid var(--border)", borderRadius:8,
               padding:8, display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:4,
               animation:"slideIn 0.2s ease",
             }}>
@@ -182,7 +182,7 @@ function TeamCard({ team, rank, onNameChange, onEmojiChange, onOverride }) {
           <span style={{ fontFamily:"var(--mono)", fontSize:10, color:"var(--text2)", letterSpacing:1 }}>진행도</span>
           <span style={{ fontFamily:"var(--mono)", fontSize:10, color:team.color }}>{team.roomsDone?.length ?? 0}/{total} 방 ({pct}%)</span>
         </div>
-        <div style={{ height:6, background:"var(--surface2)", borderRadius:3, overflow:"hidden" }}>
+        <div style={{ height:6, background:"var(--surface3)", borderRadius:3, overflow:"hidden" }}>
           <div style={{ height:"100%", background:team.color, width:`${pct}%`, borderRadius:3, transition:"width 0.6s ease" }} />
         </div>
       </div>
@@ -379,7 +379,7 @@ export default function ManagerApp() {
                   <div key={room.id} style={{ background:"var(--surface)", border:"1px solid var(--border)", borderRadius:10, padding:"12px 10px", textAlign:"center" }}>
                     <div style={{ fontSize:22, marginBottom:4 }}>{room.icon}</div>
                     <div style={{ fontFamily:"var(--mono)", fontSize:9, color:"var(--text2)", marginBottom:8, lineHeight:1.4 }}>{room.label}</div>
-                    <div style={{ height:4, background:"var(--surface2)", borderRadius:2, overflow:"hidden", marginBottom:8 }}>
+                    <div style={{ height:4, background:"var(--surface3)", borderRadius:2, overflow:"hidden", marginBottom:8 }}>
                       <div style={{ height:"100%", background:"var(--accent2)", width:`${pct}%`, borderRadius:2, transition:"width 0.6s" }} />
                     </div>
                     <div style={{ fontFamily:"var(--mono)", fontSize:11, color:"var(--accent2)", fontWeight:700 }}>{cleared}/{teams.length}</div>

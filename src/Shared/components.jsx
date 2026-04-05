@@ -190,7 +190,7 @@ export function Leaderboard({ teams, myTeamId = null }) {
                   {team.name || `팀 ${team.id + 1}`}
                 </div>
                 {/* 진행도 바 */}
-                <div style={{ flex: 1, height: 3, background: "var(--surface2)", borderRadius: 2, marginTop: 6 }}>
+                <div style={{ flex: 1, height: 3, background: "var(--surface3)", borderRadius: 2, marginTop: 6 }}>
                   <div style={{ height: "100%", background: team.color, width: `${(solvedCount/total)*100}%`, transition: "width 1s" }} />
                 </div>
               </div>

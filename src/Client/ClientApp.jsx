@@ -139,7 +139,7 @@ function RoomGrid({ solvedRooms, onRoomClick, teamColor }) {
               position:"absolute", top:8, left:10,
               fontFamily:"var(--mono)", fontSize:10, fontWeight:800,
               color: solved ? "var(--green)" : "var(--text2)",
-              background:"var(--surface2)", padding:"2px 8px", borderRadius:4,
+              background:"var(--surface3)", padding:"2px 8px", borderRadius:4,
             }}>
               #{room.id + 1}  {/* 포인트 대신 문제 번호 표시 */}
             </div>
@@ -158,12 +158,33 @@ function RoomGrid({ solvedRooms, onRoomClick, teamColor }) {
 
             {/* 토픽 태그 */}
             <div style={{
-              fontSize:9, fontFamily:"var(--mono)",
-              padding:"2px 8px", borderRadius:8,
-              background: solved ? "rgba(0,255,136,0.1)" : "rgba(108,99,255,0.1)",
-              color: solved ? "var(--green)" : "var(--accent)",
-              border: `1px solid ${solved ? "rgba(0,255,136,0.2)" : "rgba(108,99,255,0.2)"}`,
-              letterSpacing:0.5,
+              fontSize: 9, 
+              fontFamily: "var(--mono)",
+              padding: "2px 8px", 
+              borderRadius: 8,
+              // 1. 배경색 결정 (이미 풀었으면 녹색, 아니면 난이도별 색상)
+              background: solved 
+                ? "rgba(0,255,136,0.1)" 
+                : room.topic === "난이도 상" ? "rgba(255,77,77,0.1)" 
+                : room.topic === "난이도 중" ? "rgba(255,204,0,0.1)" 
+                : "rgba(77,148,255,0.1)", // "하" 또는 기본값
+              
+              // 2. 글자색 결정
+              color: solved 
+                ? "var(--green)" 
+                : room.topic === "난이도 상" ? "#ff4d4d" 
+                : room.topic === "난이도 중" ? "#ffcc00" 
+                : "#4d94ff",
+              
+              // 3. 테두리색 결정
+              border: `1px solid ${
+                solved 
+                  ? "rgba(0,255,136,0.2)" 
+                  : room.topic === "난이도 상" ? "rgba(255,77,77,0.2)" 
+                  : room.topic === "난이도 중" ? "rgba(255,204,0,0.2)" 
+                  : "rgba(77,148,255,0.2)"
+              }`,
+              letterSpacing: 0.5,
             }}>
               {room.topic}
             </div>
@@ -175,7 +196,7 @@ function RoomGrid({ solvedRooms, onRoomClick, teamColor }) {
 }
 
 // ── PasswordPanel ─────────────────────────────────────────────────────────────
-const CORRECT_CODE = ROOMS_DATA.map(r => r.answer[0]).join("");
+const CORRECT_CODE = ROOMS_DATA.map(r => r.pw).join("");
 
 function PasswordPanel({ solvedRooms, teamColor }) {
   // 1. 상태 관리: inputCode로 통일
@@ -183,7 +204,7 @@ function PasswordPanel({ solvedRooms, teamColor }) {
   const [status, setStatus] = useState("idle");
 
   const digits = ROOMS_DATA.map(room => ({
-    digit: room.answer[0],
+    digit: room.pw,
     revealed: solvedRooms.includes(room.id),
     room,
   }));
@@ -297,8 +318,8 @@ function PasswordPanel({ solvedRooms, teamColor }) {
 
 // ── ProblemModal ──────────────────────────────────────────────────────────────
 function ProblemModal({ room, onClose, onSolve }) {
-  const [answer, setAnswer]           = useState("");
-  const [status, setStatus]           = useState("idle");
+  const [answer, setAnswer] = useState("");
+  const [status, setStatus] = useState("idle");
   const inputRef = useRef(null);
 
   useEffect(() => { 
@@ -306,16 +327,9 @@ function ProblemModal({ room, onClose, onSolve }) {
     return () => clearTimeout(t); 
   }, []);
 
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   const handleSubmit = () => {
     if (status === "correct") return;
     if (answer.trim() === room.answer) {
-      // 힌트 사용 변수가 없어졌으므로 기본 포인트를 그대로 전달합니다.
       setStatus("correct");
       setTimeout(() => { onClose(); onSolve(room, room.points); }, 700);
     } else {
@@ -324,52 +338,56 @@ function ProblemModal({ room, onClose, onSolve }) {
     }
   };
 
-  const inputBorder = status === "correct" 
-    ? "1.5px solid var(--green)" 
-    : status === "wrong" 
-      ? "1.5px solid var(--accent3)" 
-      : "1.5px solid var(--border)";
-
   return (
-    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.85)", zIndex:100, display:"flex", alignItems:"center", justifyContent:"center", backdropFilter:"blur(4px)" }}>
-      <div style={{ background:"var(--surface)", border:"1px solid var(--border)", borderRadius:12, width:800, height: 600, maxWidth:"95vw", maxHeight:"90vh", overflowY:"auto", padding:"32px 36px", position:"relative", animation:"modalIn 0.3s cubic-bezier(0.4,0,0.2,1)" }}>
-        <button onClick={onClose} style={{ position:"absolute", top:18, right:20, background:"none", border:"1px solid var(--border)", color:"var(--text2)", width:30, height:30, borderRadius:4, cursor:"pointer", fontSize:14, display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.9)", zIndex:100, display:"flex", alignItems:"center", justifyContent:"center", backdropFilter:"blur(8px)" }}>
+      <div style={{ 
+        background:"var(--surface)", border:"1px solid var(--border)", borderRadius:16, 
+        width:700, maxWidth:"95vw", padding:"30px", position:"relative", 
+        animation:"modalIn 0.3s cubic-bezier(0.4,0,0.2,1)", textAlign:"center" 
+      }}>
+        {/* 닫기 버튼 */}
+        <button onClick={onClose} style={{ position:"absolute", top:15, right:15, background:"none", border:"none", color:"var(--text2)", cursor:"pointer", fontSize:20 }}>✕</button>
 
-        <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:20 }}>
-          <span style={{ fontSize:26 }}>{room.icon}</span>
-          <div>
-            <div style={{ fontFamily:"var(--mono)", fontSize:9, letterSpacing:3, color:"var(--accent)", marginBottom:3 }}>
-              ROOM {pad(room.id + 1)}
-            </div>
-            <div style={{ fontSize:18, fontWeight:700 }}>{room.label}</div>
-          </div>
+        {/* 상단 정보 */}
+        <div style={{ marginBottom:20 }}>
+           <span style={{ fontFamily:"var(--mono)", fontSize:10, color:"var(--accent)", letterSpacing:2 }}>QUIZ {room.id + 1}</span>
+           <h2 style={{ margin:0, fontSize:20, color:"#fff" }}>{room.label}</h2>
         </div>
 
-        <div style={{ background:"var(--surface2)", borderRadius:8, padding:"18px 22px", marginBottom:18 }}>
-          <p style={{ color:"var(--text)", lineHeight:1.8, whiteSpace:"pre-line", marginBottom:14, fontSize:14 }}>{room.problem}</p>
-          <div style={{ fontFamily:"var(--mono)", fontSize:18, color:"var(--gold)", textAlign:"center", padding:"10px 0", letterSpacing:2 }}>{room.formula}</div>
+        {/* 이미지 영역: 텍스트 대신 사진만 노출 */}
+        <div style={{ 
+          background:"#000", borderRadius:12, overflow:"hidden", marginBottom:25,
+          border:"1px solid var(--border)", display:"flex", justifyContent:"center", alignItems:"center",
+          minHeight: "300px"
+        }}>
+          <img 
+            src={room.image} 
+            alt="문제 이미지" 
+            style={{ maxWidth:"100%", maxHeight:"450px", display:"block", objectFit:"contain" }} 
+          />
         </div>
 
-        <div style={{ display:"flex", gap:10, marginBottom:10 }}>
+        {/* 정답 입력창 */}
+        <div style={{ display:"flex", gap:10, maxWidth:400, margin:"0 auto" }}>
           <input
             ref={inputRef}
             value={answer}
             onChange={e => setAnswer(e.target.value)}
             onKeyDown={e => e.key === "Enter" && handleSubmit()}
-            placeholder="답을 입력하세요..."
-            style={{ flex:1, background:"var(--bg)", border:inputBorder, padding:"12px 14px", borderRadius:8, color:"var(--text)", fontFamily:"var(--mono)", fontSize:15, outline:"none", transition:"border 0.2s", ...(status === "wrong" ? { animation:"shake 0.4s ease" } : {}) }}
+            placeholder="정답을 입력하세요"
+            style={{ 
+              flex:1, background:"var(--bg)", border: status === "wrong" ? "2px solid var(--accent3)" : "2px solid var(--border)", 
+              padding:"14px", borderRadius:10, color:"#fff", textAlign:"center", fontSize:18, fontWeight:700, outline:"none",
+              animation: status === "wrong" ? "shake 0.4s ease" : "none"
+            }}
           />
           <button onClick={handleSubmit}
-            style={{ fontFamily:"var(--mono)", fontSize:12, letterSpacing:1, padding:"0 24px", background:"var(--accent)", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", transition:"filter 0.2s" }}
-            onMouseEnter={e => e.currentTarget.style.filter="brightness(1.15)"}
-            onMouseLeave={e => e.currentTarget.style.filter="brightness(1)"}
-          >제출</button>
+            style={{ padding:"0 25px", background:"var(--accent)", color:"#fff", border:"none", borderRadius:10, fontWeight:700, cursor:"pointer" }}
+          >확인</button>
         </div>
 
-        {/* 💡 힌트 버튼 및 힌트 출력 창 코드가 삭제되었습니다. */}
-
-        <div style={{ marginTop:12, fontSize:13, fontWeight:500, minHeight:20, color: status === "correct" ? "var(--green)" : status === "wrong" ? "var(--accent3)" : "transparent" }}>
-          {status === "correct" ? "🎉 정답입니다!" : status === "wrong" ? "❌ 틀렸습니다. 다시 시도해보세요!" : "."}
+        <div style={{ marginTop:15, height:20, fontSize:14, color: status === "correct" ? "var(--green)" : "var(--accent3)" }}>
+          {status === "correct" ? "✨ 정답입니다!" : status === "wrong" ? "❌ 다시 생각해보세요" : ""}
         </div>
       </div>
     </div>
@@ -397,9 +415,9 @@ function Celebration({ room, pts, totalScore, onClose }) {
         </div>
         <div style={{ fontSize:46, marginBottom:8, lineHeight:1 }}>✅</div>
         <div style={{ fontFamily:"var(--mono)", fontSize:9, letterSpacing:3, color:"var(--accent)", marginBottom:6 }}>ROOM {pad(room.id + 1)} 클리어!</div>
-        <div style={{ fontSize:22, fontWeight:700, marginBottom:14 }}>{room.label} 정복!</div>
-        <div style={{ fontFamily:"var(--mono)", fontSize:36, fontWeight:700, color:"var(--gold)", letterSpacing:2, textShadow:"0 0 20px rgba(255,215,0,0.5)", marginBottom:4, animation:"ptsPop 0.5s 0.2s cubic-bezier(0.34,1.56,0.64,1) both" }}>+{pts}pt</div>
-        <div style={{ fontFamily:"var(--mono)", fontSize:12, color:"var(--text2)", marginBottom:16 }}>누적 점수: {totalScore}pt</div>
+        <div style={{ fontSize:22, fontWeight:700, marginBottom:14 }}>{room.label} 완료!</div>
+        {/* <div style={{ fontFamily:"var(--mono)", fontSize:36, fontWeight:700, color:"var(--gold)", letterSpacing:2, textShadow:"0 0 20px rgba(255,215,0,0.5)", marginBottom:4, animation:"ptsPop 0.5s 0.2s cubic-bezier(0.34,1.56,0.64,1) both" }}>+{pts}pt</div> */}
+        {/* <div style={{ fontFamily:"var(--mono)", fontSize:12, color:"var(--text2)", marginBottom:16 }}>누적 점수: {totalScore}pt</div> */}
         <div style={{ fontFamily:"var(--mono)", fontSize:11, color:"var(--accent2)", marginBottom:20, padding:"8px 14px", background:"rgba(0,212,170,0.08)", borderRadius:7, border:"1px solid rgba(0,212,170,0.22)" }}>
           🔐 비밀번호 {room.id + 1}번째 자리 공개!
         </div>

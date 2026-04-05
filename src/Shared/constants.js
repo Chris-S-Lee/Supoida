@@ -19,24 +19,12 @@ export const INIT_TEAMS = TEAM_NAMES.map((name, i) => ({
 }));
 
 export const ROOMS_DATA = [
-  { id:0, label:"대수학 방",  icon:"📐", topic:"대수학", points:100, diff:2,
-    problem:"다음 이차방정식의 해를 구하시오.\n(두 근의 합을 입력하세요)",
-    formula:"x² − 5x + 6 = 0", answer:"5", hint:"인수분해: (x−2)(x−3) = 0" },
-  { id:1, label:"기하학 방",  icon:"🔺", topic:"기하학", points:100, diff:2,
-    problem:"반지름이 5인 원의 넓이를 구하시오.\n(소수점 이하 반올림, π=3.14 사용)",
-    formula:"S = πr²", answer:"79", hint:"5×5×3.14 = 78.5 → 반올림하면 79" },
-  { id:2, label:"수열 방",    icon:"∞",  topic:"수열",   points:150, diff:3,
-    problem:"등차수열의 첫째 항이 3, 공차가 4일 때,\n제 10항을 구하시오.",
-    formula:"aₙ = a₁ + (n−1)d", answer:"39", hint:"3 + (10−1)×4 = 3 + 36 = 39" },
-  { id:3, label:"확률 방",    icon:"🎲", topic:"확률",   points:150, diff:3,
-    problem:"주사위 두 개를 던질 때 두 눈의 합이 7이 될 확률을 분수로 입력하세요.\n(분자만 입력, 분모=36)",
-    formula:"P(A) = n(A)/n(S)", answer:"6", hint:"합이 7: (1,6)(2,5)(3,4)(4,3)(5,2)(6,1) → 6가지" },
-  { id:4, label:"미적분 방",  icon:"∫",  topic:"미적분", points:200, diff:4,
-    problem:"다음 함수를 미분하시오.\n(x의 계수를 입력하세요)",
-    formula:"f(x) = 3x² + 2x + 1", answer:"6", hint:"f'(x) = 6x + 2 에서 x의 계수는 6" },
-  { id:5, label:"통계학 방",  icon:"📊", topic:"통계",   points:200, diff:4,
-    problem:"1, 2, 3, 4, 5의 표준편차를 구하시오.\n(소수점 첫째 자리까지, 예: 1.4)",
-    formula:"σ = √(Σ(xᵢ−μ)²/n)", answer:"1.4", hint:"평균=3, 분산=2, 표준편차=√2≈1.41→1.4" },
+  { id:0, label:"1번 문제", icon:"💎", topic:"난이도 하", points:0, image:"/Q1.png", answer:"4914", pw:"1" },
+  { id:1, label:"2번 문제", icon:"💎", topic:"난이도 중", points:0, image:"/Q2.png", answer:"13", pw:"2" },
+  { id:2, label:"3번 문제", icon:"💎", topic:"난이도 상",   points:0, image:"/Q3.png", answer:"-252", pw:"3" },
+  { id:3, label:"4번 문제", icon:"💎", topic:"난이도 하",   points:0, image:"/Q4.png", answer:"수요일", pw:"4" },
+  { id:4, label:"5번 문제", icon:"💎", topic:"난이도 중", points:0, image:"/Q5.png", answer:"6", pw:"5" },
+  { id:5, label:"6번 문제", icon:"💎", topic:"난이도 상",   points:0, image:"/Q6.png", answer:"3U", pw:"6" },
 ];
 
 export const CORRIDORS = [];
@@ -67,9 +55,9 @@ export const GLOBAL_CSS = `
   :root {
     --sans: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --mono: 'JetBrains Mono', 'Noto Sans KR';
-    --bg: #0a0b14;--surface: #161827;--surface2:#1a1a26;--border:#2a2a40;
-    --accent:#6c63ff; --accent2:#00d4aa; --accent3:#ff6b6b; --gold:#ffd700;
-    --text:#e8e8f0; --text2:#8888aa; --green:#00ff88; --orange:#ff9500;
+    --bg: #0a0b14;--surface: #161827;--surface2: #1a1a26; --surface3: #373743;--border: #2a2a40;
+    --accent: #6c63ff; --accent2: #00d4aa; --accent3: #ff6b6b; --gold: #ffd700;
+    --text: #e8e8f0; --text2: #8888aa; --green: #00ff88; --orange: #ff9500 --blue: #11579e;
   }
   *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
   body {
