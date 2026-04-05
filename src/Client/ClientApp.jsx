@@ -429,129 +429,98 @@ function Celebration({ room, pts, totalScore, onClose }) {
   );
 }
 
-// ── HintChat  ──────────────────────────────────────────────────────────────
-function HintChat({ hints }) {
+// ── HintChat (알림 숫자 제거 로직 추가) ──────────────────────────────────────────
+function HintChat({ hints, unreadCount, onOpenChat }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedHint, setSelectedHint] = useState(null); // 크게 볼 힌트 상태
+  const [selectedHint, setSelectedHint] = useState(null); 
   const scrollRef = useRef(null);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [hints, isOpen]);
 
+  const handleOpen = () => {
+    setIsOpen(true);
+    onOpenChat(); // 알림 숫자 초기화 함수 호출
+  };
+
+  // 난이도별 색상 매핑 함수
+  const getLevelColor = (level) => {
+    switch(level) {
+      case 'advanced': return '#ff4d4d'; // 고 (빨강)
+      case 'mid':      return '#ffcc00'; // 중 (노랑)
+      case 'basic':    return '#4d94ff'; // 초 (파랑)
+      default:         return 'var(--accent)'; 
+    }
+  };
+
   return (
     <>
-      {/* 1. 플로팅 채팅 아이콘 */}
       {!isOpen && (
-        <button 
-          onClick={() => setIsOpen(true)}
-          className="anim-float"
-          style={{
-            position: "fixed", bottom: 25, right: 25, width: 60, height: 60,
-            borderRadius: "50%", background: "var(--accent)", border: "none",
-            boxShadow: "0 8px 24px rgba(108,99,255,0.4)", cursor: "pointer", zIndex: 1001,
-            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28
-          }}
-        >
+        <button onClick={handleOpen} className="anim-float" style={{
+          position: "fixed", bottom: 25, right: 25, width: 65, height: 65,
+          borderRadius: "50%", background: "var(--accent)", border: "none",
+          boxShadow: "0 8px 24px rgba(108,99,255,0.4)", cursor: "pointer", zIndex: 1001,
+          display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30
+        }}>
           💬
-          {hints?.length > 0 && (
+          {unreadCount > 0 && (
             <div style={{ 
               position: "absolute", top: -2, right: -2, background: "#ff4d4d", 
-              color: "#fff", fontSize: 11, fontWeight: 800, padding: "2px 7px", 
+              color: "#fff", fontSize: 11, fontWeight: 800, padding: "2px 8px", 
               borderRadius: 12, border: "2px solid #0a0b14" 
-            }}>
-              {hints.length}
-            </div>
+            }}> ! </div>
           )}
         </button>
       )}
 
-      {/* 2. 우측 슬라이드 힌트 패널 */}
       <div style={{
-        position: "fixed", top: 0, right: isOpen ? 0 : -340, width: 320, height: "100%",
-        background: "rgba(13, 14, 26, 0.95)", backdropFilter: "blur(10px)",
+        position: "fixed", top: 0, right: isOpen ? 0 : -350, width: 340, height: "100%",
+        background: "rgba(13, 14, 26, 0.98)", backdropFilter: "blur(15px)",
         borderLeft: "1px solid var(--border)", transition: "right 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
-        zIndex: 1002, display: "flex", flexDirection: "column", boxShadow: "-10px 0 30px rgba(0,0,0,0.5)"
+        zIndex: 1002, display: "flex", flexDirection: "column"
       }}>
-        {/* 헤더 및 닫기 버튼 */}
-        <div style={{ 
-          padding: "20px", borderBottom: "1px solid var(--border)", 
-          display: "flex", justifyContent: "space-between", alignItems: "center" 
-        }}>
-          <span style={{ fontWeight: 800, color: "var(--accent2)", fontSize: 16 }}>📜 힌트 히스토리</span>
-          <button 
-            onClick={() => setIsOpen(false)}
-            style={{ 
-              background: "none", border: "none", color: "var(--text2)", 
-              fontSize: 20, cursor: "pointer", padding: "5px" 
-            }}
-          >
-            ✕
-          </button>
+        <div style={{ padding: "25px 20px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontWeight: 800, color: "var(--accent2)", fontSize: 16 }}>📜 HINT HISTORY</span>
+          <button onClick={() => setIsOpen(false)} style={{ background: "none", border: "none", color: "var(--text2)", fontSize: 22, cursor: "pointer" }}>✕</button>
         </div>
 
-        {/* 힌트 목록 */}
-        <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: "15px", display: "flex", flexDirection: "column", gap: 12 }}>
-          {hints && hints.length > 0 ? hints.map((h, i) => (
-            <div 
-              key={i} 
-              onClick={() => setSelectedHint(h)} // 클릭 시 확대
-              style={{
-                background: "rgba(255,255,255,0.05)", padding: "12px", borderRadius: "8px",
-                borderLeft: "4px solid var(--accent)", fontSize: 13, lineHeight: 1.6,
-                cursor: "zoom-in", transition: "transform 0.2s"
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.transform = "translateX(-5px)"}
-              onMouseLeave={(e) => e.currentTarget.style.transform = "translateX(0)"}
-            >
-              <div style={{ color: "var(--text)", marginBottom: 6 }}>{h.msg}</div>
-              <div style={{ fontSize: 10, color: "var(--text2)", textAlign: "right" }}>
-                {new Date(h.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: "20px", display: "flex", flexDirection: "column", gap: 15 }}>
+          {hints?.map((h, i) => (
+            <div key={i} onClick={() => setSelectedHint(h)} style={{
+              background: "rgba(255,255,255,0.05)", 
+              padding: "15px", 
+              borderRadius: "12px",
+              borderLeft: `4px solid ${getLevelColor(h.level)}`, 
+              cursor: "zoom-in",
+              transition: "transform 0.2s"
+            }}>
+              <div style={{ 
+                fontSize: 10, 
+                // 글자 색상도 난이도 색상에 맞춤
+                color: getLevelColor(h.level), 
+                fontWeight: 800, 
+                marginBottom: 6 
+              }}>
+                {h.roomLabel} | {h.level === 'basic' ? '초급' : h.level === 'mid' ? '중급' : h.level === 'advanced' ? '고급' : ''}
               </div>
+              <div style={{ color: "#fff", fontSize: 13, lineHeight: 1.6 }}>{h.text}</div>
+              {h.image && (
+                <div style={{ width: "100%", height: 60, borderRadius: 6, overflow: "hidden", marginTop: 8, background: "#000" }}>
+                  <img src={h.image} style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.6 }} />
+                </div>
+              )}
             </div>
-          )) : (
-            <div style={{ color: "var(--text2)", textAlign: "center", marginTop: 60, fontSize: 14 }}>
-              아직 받은 힌트가 없습니다.
-            </div>
-          )}
+          ))}
         </div>
       </div>
 
-      {/* 3. 힌트 크게 보기 모달 (Overlay) */}
       {selectedHint && (
-        <div 
-          onClick={() => setSelectedHint(null)}
-          style={{
-            position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", 
-            zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center",
-            padding: 20, animation: "fadeIn 0.2s ease"
-          }}
-        >
-          <div 
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: "var(--surface)", border: "2px solid var(--accent)",
-              padding: "40px 30px", borderRadius: "16px", maxWidth: 500, width: "100%",
-              textAlign: "center", boxShadow: "0 0 50px rgba(108,99,255,0.3)",
-              position: "relative"
-            }}
-          >
-            <button 
-              onClick={() => setSelectedHint(null)}
-              style={{ position: "absolute", top: 15, right: 15, background: "none", border: "none", color: "#666", fontSize: 20, cursor: "pointer" }}
-            >
-              ✕
-            </button>
-            <div style={{ fontSize: 40, marginBottom: 20 }}>💡</div>
-            <div style={{ 
-              fontSize: 20, fontWeight: 700, color: "#fff", lineHeight: 1.6, 
-              wordBreak: "keep-all", whiteSpace: "pre-wrap" 
-            }}>
-              {selectedHint.msg}
-            </div>
-            <div style={{ marginTop: 25, fontSize: 12, color: "var(--accent2)", fontFamily: "var(--mono)" }}>
-              RECEIVED AT {new Date(selectedHint.ts).toLocaleTimeString()}
-            </div>
+        <div onClick={() => setSelectedHint(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.92)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "var(--surface)", border: "1px solid var(--border)", padding: "30px", borderRadius: "20px", maxWidth: 600, width: "100%", position: "relative" }}>
+            <button onClick={() => setSelectedHint(null)} style={{ position: "absolute", top: 15, right: 15, background: "none", border: "none", color: "#666", fontSize: 24 }}>✕</button>
+            <div style={{ fontSize: 18, color: "#fff", textAlign: "center", whiteSpace: "pre-wrap", marginBottom: 20 }}>{selectedHint.text}</div>
+            {selectedHint.image && <img src={selectedHint.image} style={{ width: "100%", borderRadius: 12 }} />}
           </div>
         </div>
       )}
@@ -559,19 +528,63 @@ function HintChat({ hints }) {
   );
 }
 
+// ── HintToast 수정 (사진 없을 때 썸네일 제거) ──────────────────────
+function HintToast({ hint, onClear }) {
+  return (
+    <div style={{
+      position: "fixed", bottom: 100, right: 30, zIndex: 10001,
+      width: 320, background: "var(--surface)", border: "2px solid var(--accent)",
+      borderRadius: 16, padding: "20px", boxShadow: "0 12px 40px rgba(0,0,0,0.6)",
+      animation: "slideInRight 0.4s ease-out"
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+        <span style={{ fontSize: 11, fontWeight: 900, color: "var(--accent)" }}>📢 NEW HINT</span>
+        <button onClick={onClear} style={{ background: "none", border: "none", color: "#888", cursor: "pointer" }}>✕</button>
+      </div>
+      <div style={{ color: "#fff", fontSize: 14, lineHeight: 1.6, marginBottom: hint.image ? 12 : 0 }}>
+        {hint.text}
+      </div>
+      {/* 사진이 있을 때만 이미지 영역 렌더링 */}
+      {hint.image && (
+        <div style={{ borderRadius: 8, overflow: "hidden", border: "1px solid #333" }}>
+          <img src={hint.image} alt="Hint" style={{ width: "100%", display: "block" }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── ClientApp ─────────────────────────────────────────────────────────────────
 export default function ClientApp() {
-  const { state, overrideTeam, solveRoom, moveTeam, setTimerRunning, tickTimer,startTimerToTarget, } = useSharedStore();
-
-  
+  const { state, overrideTeam, solveRoom, moveTeam, setTimerRunning, tickTimer, startTimerToTarget } = useSharedStore();
+  const [showHintToast, setShowHintToast] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const sessionId = useRef(getOrCreateSessionId()).current;
-  const [myTeamId, setMyTeamId] = useState(() => {
-    const saved = localStorage.getItem(SESSION_KEY);
-    return saved !== null ? Number(saved) : null;
-  });
+  const [myTeamId, setMyTeamId] = useState(() => Number(localStorage.getItem(SESSION_KEY)) || null);
   const [activeRoomId, setActiveRoomId] = useState(null);
-  const [celebration, setCelebration]   = useState(null);
-  const [toast, setToast]               = useState(null);
+  const [celebration, setCelebration] = useState(null);
+  const [toast, setToast] = useState(null);
+
+  const myTeam = state?.teams?.[myTeamId];
+
+  // 힌트 수신 감시 (5초 후 자동 종료 로직)
+  useEffect(() => {
+    if (myTeam?.lastHint?.ts) {
+      setShowHintToast(true);
+      setUnreadCount(prev => prev + 1);
+
+      const timer = setTimeout(() => setShowHintToast(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [myTeam?.lastHint?.ts]);
+
+  // 2. 힌트 도착 감시 로직 (myTeam이 정의된 후 실행됨)
+  useEffect(() => {
+    if (myTeam?.lastHint?.ts) {
+      setShowHintToast(true);
+      // 알림 사운드 등을 추가하려면 여기에 작성
+    }
+  }, [myTeam?.lastHint?.ts]);
 
   useEffect(() => {
     const interval = setInterval(tickTimer, 1000);
@@ -587,6 +600,17 @@ export default function ClientApp() {
     }
   }, [state?.resetToken]); // eslint-disable-line
 
+  useEffect(() => {
+    if (myTeam?.lastHint?.ts) {
+      // 힌트가 도착하면 상태를 true로 변경
+      setShowHintToast(true);
+      
+      // (선택사항) 30초 후에 자동으로 닫고 싶다면 아래 주석 해제
+      // const timer = setTimeout(() => setShowHintToast(false), 30000);
+      // return () => clearTimeout(timer);
+    }
+  }, [myTeam?.lastHint?.ts]);
+
   const handleSolve = useCallback((room, pts) => {
     if (!state) return;
     const myTeam = myTeamId !== null ? state.teams[myTeamId] : null;
@@ -598,18 +622,8 @@ export default function ClientApp() {
 
   if (!state || !state.teams) {
     return <div style={{color:'#fff'}}>Loading Teams...</div>;
-  }
-  // if (!state) {
-  //   return (
-  //     <div style={{ background:"#0a0b14", height:"100vh", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff" }}>
-  //       <div style={{ fontFamily:"var(--mono)", letterSpacing:2 }}>연결 중...</div>
-  //     </div>
-  //   );
-  // }
-
-  
+  }  
   const { teams, timerSec, timerRunning } = state;
-  const myTeam = myTeamId !== null ? teams[myTeamId] : null;
 
   const handleClaim = (teamId, name) => {
       // Firebase에 내가 이 팀을 찜했다는 정보를 보냅니다.
@@ -726,7 +740,17 @@ export default function ClientApp() {
       )}
       {toast && <Toast msg={toast} onDone={() => setToast(null)} />}
       <GridBg />
-      <HintChat hints={myTeam.hints} />
+      {/* 힌트 알림창 (5초후 자동삭제) */}
+      {showHintToast && myTeam?.lastHint && (
+        <HintToast hint={myTeam.lastHint} onClear={() => setShowHintToast(false)} />
+      )}
+      
+      {/* 힌트 채팅 (읽으면 숫자 초기화) */}
+      <HintChat 
+        hints={myTeam?.hints || []} 
+        unreadCount={unreadCount} 
+        onOpenChat={() => setUnreadCount(0)} 
+      />
     </div>
   );
 }

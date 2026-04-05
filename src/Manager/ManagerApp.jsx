@@ -16,24 +16,42 @@ function AdminActionPanel({ team, onOverride }) {
 
   // 2. 힌트 전송 로직 (채팅형)
   const sendHint = (level) => {
-    const targetId = window.prompt("힌트를 줄 문제 번호를 입력하세요 (1~6):", team.currentRoom + 1);
-    const idx = parseInt(targetId) - 1;
-    
-    if (ROOMS_DATA[idx]) {
-      const room = ROOMS_DATA[idx];
-      let hintContent = "";
-      
-      if (level === "초") hintContent = `🌱 [${room.label} 초급] 문제의 조건을 다시 읽어보세요.`;
-      else if (level === "중") hintContent = `🌿 [${room.label} 중급] ${room.hint.slice(0, 15)}...`;
-      else if (level === "고") hintContent = `🌳 [${room.label} 고급] 정답 힌트: ${room.hint}`;
+  const targetId = window.prompt("힌트를 줄 문제 번호를 입력하세요 (1~6):", team.currentRoom + 1);
+  if (!targetId) return;
 
-      const prevHints = team.hints || [];
-      onOverride(team.id, { 
-        hints: [...prevHints, { msg: hintContent, ts: Date.now(), roomId: idx }],
-        alert: { msg: "새로운 힌트가 도착했습니다!", type: "hint", ts: Date.now() }
-      });
+  const idx = parseInt(targetId) - 1;
+  
+  if (ROOMS_DATA[idx]) {
+    const room = ROOMS_DATA[idx];
+    
+    // 매핑 테이블 (한글 입력을 영문 키값으로 변환)
+    const levelMap = { "초": "basic", "중": "mid", "고": "advanced" };
+    const key = levelMap[level]; 
+    const hintData = room.hints?.[key];
+
+    if (!hintData) {
+      setToast(`${level}급 힌트 데이터가 없습니다.`);
+      return;
     }
-  };
+
+    const newHint = {
+      level: key, // 'basic', 'mid', 'advanced' 중 하나가 들어감
+      text: hintData.text,
+      image: hintData.image || null,
+      roomLabel: room.label,
+      ts: Date.now()
+    };
+
+    const currentHints = team.hints || [];
+    onOverride(team.id, { 
+      lastHint: newHint,
+      hints: [...currentHints, newHint]
+    });
+
+    // 브라우저 alert 대신 하단 Toast 알림 사용
+    setToast(`${team.name} 팀에게 ${level}급 힌트를 전송했습니다.`);
+  }
+};
 
   // ★ 오류의 원인: 이 함수가 함수 블록 { } 안에 선언되어 있어야 합니다.
   const actionBtnStyle = (color) => ({
