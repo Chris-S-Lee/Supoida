@@ -7,6 +7,7 @@ export const TEAM_NAMES = [
   "시몬스", "대대손손", "용사", "For용", "헤핑"
 ];
 
+
 export const INIT_TEAMS = TEAM_NAMES.map((name, i) => ({
   id: i,
   name: name, 
@@ -19,32 +20,32 @@ export const INIT_TEAMS = TEAM_NAMES.map((name, i) => ({
 }));
 
 export const ROOMS_DATA = [
-  { id:0, label:"1번 문제", icon:"🎯", topic:"난이도 하", points:0, image:"/Q1.png", answer:"4914", pw:"1", hints: {
+  { id:0, label:"1번 문제", icon:"🎯", topic:"난이도 하", points:0, image:"/Q1.png", answer:"4914", pw:"4", hints: {
       basic: { text: "5 X 5 = 25", image: null },
       mid: { text: "구구단", image: null },
       advanced: { text: "1 + 1 = 21", image: null }
     }},
-  { id:1, label:"2번 문제", icon:"🎯", topic:"난이도 중", points:0, image:"/Q2.png", answer:"13", pw:"2", hints: {
+  { id:1, label:"2번 문제", icon:"🎯", topic:"난이도 중", points:0, image:"/Q2.png", answer:"13", pw:"8", hints: {
       basic: { text: "마지막 가로줄은 세로줄의 합", image: null },
       mid: { text: "치환", image: null },
       advanced: { text: "▲ = 4", image: null }
     }},
-  { id:2, label:"3번 문제", icon:"🎯", topic:"난이도 상",   points:0, image:"/Q3.png", answer:"-252", pw:"3", hints: {
+  { id:2, label:"3번 문제", icon:"🎯", topic:"난이도 상",   points:0, image:"/Q3.png", answer:"-252", pw:"6", hints: {
       basic: { text: null, image: "Hint3-1.png" },
       mid: { text: null, image: "Hint3-2.png" },
       advanced: { text: null, image: "Hint3-3.png" },
     }},
-  { id:3, label:"4번 문제", icon:"🎯", topic:"난이도 하",   points:0, image:"/Q4.png", answer:"수요일", pw:"4", hints: {
+  { id:3, label:"4번 문제", icon:"🎯", topic:"난이도 하",   points:0, image:"/Q4.png", answer:"수요일", pw:"1", hints: {
       basic: { text: null, image: "Hint4-1.png" },
       mid: { text: "치환", image: null },
       advanced: { text: "5월", image: null }
     } },
-  { id:4, label:"5번 문제", icon:"🎯", topic:"난이도 상", points:0, image:"/Q5.png", answer:"6", pw:"5", hints: {
+  { id:4, label:"5번 문제", icon:"🎯", topic:"난이도 상", points:0, image:"/Q5.png", answer:"6", pw:"7", hints: {
       basic: { text: "987654321", image: null },
       mid: { text: "000+000", image: null },
       advanced: { text: null, image: "Hint5-3.png" }
     } },
-  { id:5, label:"6번 문제", icon:"🎯", topic:"난이도 중",   points:0, image:"/Q6.png", answer:"3001-2791=210", pw:"6", hints: {
+  { id:5, label:"6번 문제", icon:"🎯", topic:"난이도 중",   points:0, image:"/Q6.png", answer:"3001-2791=210", pw:"9", hints: {
       basic: { text: "수식에는 숫자만 들어갈 수 있습니다.", image: null },
       mid: { text: null, image: "Hint6-2.png" },
       advanced: { text: "3001-210=2791", image: null }
@@ -53,30 +54,71 @@ export const ROOMS_DATA = [
 
 export const CORRIDORS = [];
 
+// ── 브릿지 퍼즐 데이터 (7x7 그리드 확장) ──
+// 이미지의 복잡한 연결 구조를 반영하여 7x7 그리드에 섬을 배치했습니다.
+// 모든 섬은 하나의 네트워크로 연결되며 다리가 서로 교차하지 않습니다.
 export const BRIDGE_PUZZLE_DATA = {
   islands: [
-    { id: 0, r: 1, c: 1, count: 3 },
-    { id: 1, r: 1, c: 5, count: 4 },
-    { id: 2, r: 1, c: 8, count: 2 },
-    { id: 3, r: 4, c: 1, count: 2 },
-    { id: 4, r: 4, c: 5, count: 6 },
-    { id: 5, r: 4, c: 8, count: 3 },
-    { id: 6, r: 8, c: 1, count: 1 },
-    { id: 7, r: 8, c: 5, count: 3 },
-    { id: 8, r: 8, c: 8, count: 2 },
+    // row 0
+    { id: 0, r: 0, c: 0, count: 2 },
+    { id: 1, r: 0, c: 1, count: 3 },
+    { id: 2, r: 0, c: 3, count: 4 },
+    { id: 3, r: 0, c: 5, count: 2 },
+
+    // row 1
+    { id: 4, r: 1, c: 6, count: 2 },
+
+    // row 2
+    { id: 5, r: 2, c: 0, count: 1 },
+    { id: 6, r: 2, c: 1, count: 1 },
+    { id: 7, r: 2, c: 4, count: 1 },
+    { id: 8, r: 2, c: 5, count: 3 },
+    { id: 9, r: 2, c: 6, count: 3 },
+
+    // row 3
+    { id: 10, r: 3, c: 0, count: 2 },
+    { id: 11, r: 3, c: 3, count: 8 },
+    { id: 12, r: 3, c: 5, count: 5 },
+    { id: 13, r: 3, c: 6, count: 2 },
+
+    // row 4
+    { id: 14, r: 4, c: 0, count: 3 },
+    { id: 15, r: 4, c: 2, count: 3 },
+    { id: 16, r: 4, c: 6, count: 1 },
+
+    // row 5
+    { id: 17, r: 5, c: 2, count: 2 },
+    { id: 18, r: 5, c: 5, count: 3 },
+    { id: 19, r: 5, c: 6, count: 4 },
+
+    // row 6
+    { id: 20, r: 6, c: 0, count: 3 },
+    { id: 21, r: 6, c: 3, count: 3 },
+    { id: 22, r: 6, c: 4, count: 1 },
+    { id: 23, r: 6, c: 6, count: 2 },
   ]
 };
 
-// 시가쿠 10x10용 데이터 (예시)
-export const SHIKAKU_10X10 = {
+// ── 시가쿠 퍼즐 데이터 (10x10) ──
+// 보내주신 이미지처럼 작은 숫자(1~6)를 조밀하게 배치하여 
+// 100칸 전체를 빈틈없이 채우는 고난도 구성입니다.
+export const SHIKAKU = {
   size: 10,
   numbers: [
-    { r: 0, c: 0, n: 4 }, { r: 0, c: 5, n: 6 }, { r: 1, c: 2, n: 10 },
-    { r: 2, c: 8, n: 4 }, { r: 3, c: 4, n: 12 }, { r: 5, c: 1, n: 8 },
-    { r: 6, c: 6, n: 9 }, { r: 7, c: 3, n: 15 }, { r: 8, c: 9, n: 2 },
-    { r: 9, c: 0, n: 5 }, { r: 9, c: 5, n: 25 }
-  ]
+    { x: 4, y: 0, value: 5 },{ x: 9, y: 0, value: 2 },
+    { x: 5, y: 1, value: 4 },
+    { x: 2, y: 2, value: 9 },{ x: 5, y: 2, value: 9 },{ x: 8, y: 2, value: 3 },
+    { x: 0, y: 3, value: 4 },{ x: 1, y: 3, value: 3 },{ x: 7, y: 3, value: 2 },
+    { x: 1, y: 4, value: 2 },{ x: 3, y: 4, value: 2 },{ x: 7, y: 4, value: 2 },
+
+    { x: 1, y: 5, value: 3 },{ x: 2, y: 5, value: 2 },{ x: 6, y: 5, value: 6 },{ x: 9, y: 5, value: 6 },
+    { x: 6, y: 6, value: 12 },
+    // { x: 4, y: 7, value: 5 },
+    { x: 1, y: 8, value: 2 },{ x: 3, y: 8, value: 5 },{ x: 8, y: 8, value: 2 },
+    { x: 0, y: 9, value: 5 },{ x: 2, y: 9, value: 3 },{ x: 5, y: 9, value: 7 },
+]
 };
+
 
 // ── 팀 설정 (10팀, 아이콘 없음) ─────────────────────────────────────────────
 const TEAM_COLORS = [

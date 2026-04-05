@@ -1,12 +1,12 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import {
-  ROOMS_DATA, CONFETTI_COLORS,
-  SESSION_KEY,
-  pad,
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { 
+  TOTAL_TIME, CONFETTI_COLORS, SESSION_KEY, TEAM_NAMES, INIT_TEAMS, 
+  ROOMS_DATA, CORRIDORS, NICKNAMES, GLOBAL_CSS, formatTime, pad,
+  BRIDGE_PUZZLE_DATA, // constants.js에서 불러옴
+  SHIKAKU       // constants.js에서 불러옴
 } from "../shared/constants.js";
 import { Header, Leaderboard, Toast, GridBg } from "../shared/components.jsx";
 import { useSharedStore } from "../shared/store.js";
-
 
 // ── 세션 ID ────────────────────────────────────────────────────────────────
 function getOrCreateSessionId() {
@@ -127,43 +127,53 @@ function RoomGrid({ solvedRooms, onRoomClick, teamColor }) {
 // ── PasswordPanel ─────────────────────────────────────────────
 const CORRECT_CODE = ROOMS_DATA.map(r => r.pw).join("");
 
+// ── PasswordPanel ─────────────────────────────────────────────
 function PasswordPanel({ solvedRooms, teamColor, onAllCorrect, teamId, onOverride, teamName }) {
   const [inputCode, setInputCode] = useState("");
   const [status, setStatus] = useState("idle");
-  const notifiedRef = useRef(false);
 
-  const digits = ROOMS_DATA.map(room => ({ digit:room.pw, revealed:solvedRooms.includes(room.id), room }));
+  // --- 3분 제한 로직 (최종 비밀번호 오답 시) ---
+  const [penaltyEnd, setPenaltyEnd] = useState(Number(localStorage.getItem(`penalty_${teamId}`)) || 0);
+  const [timeLeft, setTimeLeft] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((penaltyEnd - Date.now()) / 1000));
+      setTimeLeft(remaining);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [penaltyEnd]);
+
+  const digits = ROOMS_DATA.map(room => ({ digit: room.pw, revealed: solvedRooms.includes(room.id), room }));
   const allRevealed = digits.every(d => d.revealed);
+  const CORRECT_CODE = ROOMS_DATA.map(r => r.pw).join(""); // 정답 코드 생성
 
   const handleInputChange = (e) => {
-    setInputCode(e.target.value.replace(/[^0-9]/g, "").slice(0,6));
+    if (timeLeft > 0) return; 
+    setInputCode(e.target.value.replace(/[^0-9]/g, "").slice(0, 6));
     setStatus("idle");
   };
 
   const handleSubmit = () => {
-    // CORRECT_CODE는 constants.js에서 정의된 6자리 정답입니다.
+    if (status === "correct" || timeLeft > 0) return;
+
+    // 최종 비밀번호 6자리 비교
     if (inputCode === CORRECT_CODE) {
       setStatus("correct");
-      if (!notifiedRef.current) {
-        notifiedRef.current = true;
-        
-        // ★ 핵심: 관리자(DB)에 완료 상태와 알림 메시지를 보냅니다.
-        onOverride(teamId, { 
-          isPart1Finished: true, 
-          alert: { 
-            msg: `🎉 ${teamName} 팀이 파트 1 비밀번호를 풀었습니다!`, 
-            type: "info", 
-            ts: Date.now() 
-          } 
-        });
-        
-        onAllCorrect && onAllCorrect();
-      }
+      setTimeout(() => {
+        onAllCorrect(); // 파트 2 대기 화면으로 이동
+      }, 1000);
     } else {
+      // ❌ 틀렸을 때: 3분(180초) 페널티 부여
+      const newPenaltyEnd = Date.now() + 180000;
+      setPenaltyEnd(newPenaltyEnd);
+      localStorage.setItem(`penalty_${teamId}`, String(newPenaltyEnd));
+      
       setStatus("wrong");
-      setTimeout(() => setStatus("idle"), 1200);
+      // 메인 스토어의 팀 데이터도 업데이트 (필요 시)
+      onOverride(teamId, { freezeUntil: newPenaltyEnd });
     }
-  };
+  };  
 
   const color = teamColor || "var(--accent2)";
 
@@ -177,7 +187,7 @@ function PasswordPanel({ solvedRooms, teamColor, onAllCorrect, teamId, onOverrid
         </span>
       </div>
       <div style={{ display:"flex", gap:8, justifyContent:"center" }}>
-        {digits.map(({digit,revealed,room}) => (
+        {digits.map(({digit, revealed, room}) => (
           <div key={room.id} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
             <div style={{ width:44, height:54, borderRadius:8,
               border:`1.5px solid ${revealed?color:status==="wrong"?"rgba(255,107,107,0.35)":"var(--border)"}`,
@@ -194,23 +204,31 @@ function PasswordPanel({ solvedRooms, teamColor, onAllCorrect, teamId, onOverrid
       </div>
       <div style={{ display:"flex", gap:8 }}>
         <input type="text" inputMode="numeric" value={inputCode} onChange={handleInputChange}
-          onKeyDown={e=>e.key==="Enter"&&handleSubmit()} placeholder="숫자 6자리 입력"
-          style={{ flex:1, background:"var(--bg)",
+          onKeyDown={e=>e.key==="Enter"&&handleSubmit()} 
+          placeholder={timeLeft > 0 ? "입력 제한" : "숫자 6자리 입력"}
+          disabled={timeLeft > 0} 
+          style={{ flex:1, background:timeLeft > 0 ? "var(--border)" : "var(--bg)",
             border:`1.5px solid ${status==="correct"?"var(--green)":status==="wrong"?"var(--accent3)":"var(--border)"}`,
             borderRadius:7, padding:"9px 14px", color:"var(--text)", fontFamily:"var(--mono)", fontSize:15, fontWeight:700,
             letterSpacing:4, outline:"none", textAlign:"center", transition:"border 0.2s",
             animation:status==="wrong"?"shake 0.4s ease":"none" }}
         />
-        <button onClick={handleSubmit} disabled={status==="correct"}
+        <button onClick={handleSubmit} disabled={status==="correct" || timeLeft > 0}
           style={{ fontFamily:"var(--mono)", fontSize:11, letterSpacing:1, padding:"0 18px",
-            background:status==="correct"?"var(--green)":"var(--accent)", color:"#fff", border:"none",
-            borderRadius:7, cursor:status==="correct"?"default":"pointer", transition:"all 0.2s", whiteSpace:"nowrap" }}>
-          {status==="correct" ? "🎉 성공!" : "확인"}
+            background:timeLeft > 0 ? "#444" : (status==="correct"?"var(--green)":"var(--accent)"), 
+            color:"#fff", border:"none", borderRadius:7, cursor:(status==="correct" || timeLeft > 0)?"default":"pointer", transition:"all 0.2s", whiteSpace:"nowrap" }}>
+          {status==="correct" ? "🎉 성공!" : timeLeft > 0 ? `${Math.floor(timeLeft/60)}:${String(timeLeft%60).padStart(2,'0')}` : "확인"}
         </button>
       </div>
-      {status==="correct" && (
-        <div style={{ fontFamily:"var(--mono)", fontSize:12, color:"var(--green)", textAlign:"center", padding:"8px", background:"rgba(0,255,136,0.07)", borderRadius:7, border:"1px solid rgba(0,255,136,0.2)" }}>
-          🏆 정답! 잠시 대기하세요...
+      {(status==="correct" || timeLeft > 0) && (
+        <div style={{ 
+          fontFamily:"var(--mono)", fontSize:12, 
+          color: status==="correct" ? "var(--green)" : "var(--accent3)", 
+          textAlign:"center", padding:"8px", 
+          background: status==="correct" ? "rgba(0,255,136,0.07)" : "rgba(255,107,107,0.07)", 
+          borderRadius:7, border: `1px solid ${status==="correct" ? "rgba(0,255,136,0.2)" : "rgba(255,107,107,0.2)"}` 
+        }}>
+          {status==="correct" ? "🏆 정답! 잠시 대기하세요..." : `⚠️ 틀렸습니다. ${Math.floor(timeLeft/60)}분 ${timeLeft%60}초 후 재시도 가능`}
         </div>
       )}
     </div>
@@ -236,10 +254,10 @@ function WaitingScreen({ teamName, teamColor }) {
       <div style={{ zIndex:1, textAlign:"center" }}>
         <div style={{ fontFamily:"var(--mono)", fontSize:22, fontWeight:800, color:teamColor||"var(--accent)", marginBottom:8 }}>{teamName} 팀</div>
         <div style={{ fontFamily:"var(--mono)", fontSize:16, color:"#fff", marginBottom:6 }}>파트 1 완료! 🎉</div>
-        <div style={{ fontFamily:"var(--mono)", fontSize:13, color:"var(--text2)", animation:"pulse2 1.5s infinite" }}>매니저의 신호를 기다리는 중{dots}</div>
+        <div style={{ fontFamily:"var(--mono)", fontSize:13, color:"var(--text2)", animation:"pulse2 1.5s infinite" }}>팀원이 올라오길 기다리는 중{dots}</div>
       </div>
       <div style={{ zIndex:1, background:"rgba(108,99,255,0.08)", border:"1px solid rgba(108,99,255,0.25)", borderRadius:10, padding:"12px 28px", fontFamily:"var(--mono)", fontSize:11, color:"var(--text2)", textAlign:"center", lineHeight:1.8 }}>
-        잠시 후 파트 2가 시작됩니다.<br/>자리에서 대기해 주세요.
+        자리에서 대기해 주세요.
       </div>
     </div>
   );
@@ -274,36 +292,56 @@ function AirRaidAlert({ onDone }) {
   );
 }
 
-// ── ProblemModal ──────────────────────────────────────────────
-function ProblemModal({ room, onClose, onSolve }) {
+function ProblemModal({ room, onClose, onSolve, myTeam, myTeamId, overrideTeam, setToast }) {
   const [answer, setAnswer] = useState("");
   const [status, setStatus] = useState("idle");
   const inputRef = useRef(null);
-  useEffect(() => { const t = setTimeout(() => inputRef.current?.focus(), 300); return () => clearTimeout(t); }, []);
+
+  useEffect(() => { 
+    const t = setTimeout(() => inputRef.current?.focus(), 300); 
+    return () => clearTimeout(t); 
+  }, []);
+
   const handleSubmit = () => {
-    if (status==="correct") return;
-    if (answer.trim()===room.answer) { setStatus("correct"); setTimeout(() => { onClose(); onSolve(room, room.points); }, 700); }
-    else { setStatus("wrong"); setTimeout(() => setStatus("idle"), 500); }
+    if (status === "correct") return;
+
+    if (answer.trim() === room.answer) {
+      setStatus("correct");
+      setTimeout(() => { onClose(); onSolve(room, room.points); }, 700);
+    } else {
+      // ❌ 오답 페널티: 해당 문제만 1분(60초) 차단
+      const penaltyTime = Date.now() + 60000;
+      const currentPenalties = myTeam.roomPenalties || {};
+      
+      overrideTeam(myTeamId, {
+        roomPenalties: { ...currentPenalties, [room.id]: penaltyTime }
+      });
+
+      setStatus("wrong");
+      setTimeout(() => {
+        onClose();
+        // 2초간 표시될 메시지 (Toast 컴포넌트 활용)
+        setToast(`❌ 오답! 이 문제는 1분 뒤에 풀 수 있습니다.`);
+      }, 600);
+    }
   };
+
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.9)", zIndex:100, display:"flex", alignItems:"center", justifyContent:"center", backdropFilter:"blur(8px)" }}>
-      <div style={{ background:"var(--surface)", border:"1px solid var(--border)", borderRadius:16, width:700, maxWidth:"95vw", padding:"30px", position:"relative", animation:"modalIn 0.3s cubic-bezier(0.4,0,0.2,1)", textAlign:"center" }}>
+      <div style={{ background:"var(--surface)", border:"1px solid var(--border)", borderRadius:16, width:700, maxWidth:"95vw", padding:"30px", position:"relative", animation:"modalIn 0.3s ease", textAlign:"center" }}>
         <button onClick={onClose} style={{ position:"absolute", top:15, right:15, background:"none", border:"none", color:"var(--text2)", cursor:"pointer", fontSize:20 }}>✕</button>
         <div style={{ marginBottom:20 }}>
           <span style={{ fontFamily:"var(--mono)", fontSize:10, color:"var(--accent)", letterSpacing:2 }}>QUIZ {room.id+1}</span>
           <h2 style={{ margin:0, fontSize:20, color:"#fff" }}>{room.label}</h2>
         </div>
         <div style={{ background:"#000", borderRadius:12, overflow:"hidden", marginBottom:25, border:"1px solid var(--border)", display:"flex", justifyContent:"center", alignItems:"center", minHeight:300 }}>
-          <img src={room.image} alt="문제 이미지" style={{ maxWidth:"100%", maxHeight:450, display:"block", objectFit:"contain" }} />
+          <img src={room.image} alt="문제" style={{ maxWidth:"100%", maxHeight:450, objectFit:"contain" }} />
         </div>
         <div style={{ display:"flex", gap:10, maxWidth:400, margin:"0 auto" }}>
-          <input ref={inputRef} value={answer} onChange={e=>setAnswer(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleSubmit()} placeholder="정답을 입력하세요"
+          <input ref={inputRef} value={answer} onChange={e=>setAnswer(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleSubmit()} placeholder="정답 입력"
             style={{ flex:1, background:"var(--bg)", border:status==="wrong"?"2px solid var(--accent3)":"2px solid var(--border)", padding:"14px", borderRadius:10, color:"#fff", textAlign:"center", fontSize:18, fontWeight:700, outline:"none", animation:status==="wrong"?"shake 0.4s ease":"none" }}
           />
           <button onClick={handleSubmit} style={{ padding:"0 25px", background:"var(--accent)", color:"#fff", border:"none", borderRadius:10, fontWeight:700, cursor:"pointer" }}>확인</button>
-        </div>
-        <div style={{ marginTop:15, height:20, fontSize:14, color:status==="correct"?"var(--green)":"var(--accent3)" }}>
-          {status==="correct"?"✨ 정답입니다!":status==="wrong"?"❌ 다시 생각해보세요":""}
         </div>
       </div>
     </div>
@@ -404,6 +442,7 @@ function Part2RoomGrid({ solvedP2, onRoomClick, teamColor }) {
       {PART2_ROOMS.map(room => {
         const solved = solvedP2.includes(room.id);
         return (
+          
           <div key={room.id} onClick={() => !solved && onRoomClick(room.id)}
             style={{ border:`1.5px solid ${solved?"rgba(0,255,136,0.45)":"var(--border)"}`, background:solved?"rgba(0,255,136,0.05)":"var(--surface)", borderRadius:12, padding:"22px 14px", display:"flex", flexDirection:"column", alignItems:"center", gap:8, cursor:solved?"default":"pointer", transition:"all 0.25s ease", minHeight:130, position:"relative" }}
             onMouseEnter={e => { if(!solved){ e.currentTarget.style.borderColor=teamColor||"rgba(108,99,255,0.6)"; e.currentTarget.style.transform="translateY(-2px)"; }}}
@@ -464,162 +503,164 @@ function Q7Modal({ onClose, onSolve }) {
   );
 }
 
-// ── 브릿지 퍼즐 ───────────────────────────────────────────────
-// 5×5 그리드 위의 섬 퍼즐 (숫자 = 연결할 다리 수)
-const BRIDGE_NODES = [
-  { id:0, x:0, y:0, req:2 },
-  { id:1, x:2, y:0, req:3 },
-  { id:2, x:4, y:0, req:1 },
-  { id:3, x:0, y:2, req:3 },
-  { id:4, x:2, y:2, req:4 },
-  { id:5, x:4, y:2, req:2 },
-  { id:6, x:0, y:4, req:1 },
-  { id:7, x:2, y:4, req:3 },
-  { id:8, x:4, y:4, req:1 },
-];
-const BRIDGE_PAIRS = [
-  [0,1],[1,2],
-  [3,4],[4,5],
-  [6,7],[7,8],
-  [0,3],[3,6],
-  [1,4],[4,7],
-  [2,5],[5,8],
-];
+// BridgePuzzle.jsx (또는 ClientApp.jsx 내 추가)
+export function BridgeGame({ onSolve, onClose }) {
+  const [bridges, setBridges] = useState([]); 
+  const [selected, setSelected] = useState(null);
+  const SIZE = 7;
+  const CELL = 50; // 간격을 충분히 넓힘
 
-function BridgePuzzle({ onSolve, onClose }) {
-  const initBridges = () => { const b={}; BRIDGE_PAIRS.forEach(([a,z]) => { b[`${a}-${z}`]=0; }); return b; };
-  const [bridges, setBridges] = useState(initBridges);
-  const [solved, setSolved] = useState(false);
+  const islands = BRIDGE_PUZZLE_DATA.islands;
 
-  const CELL=80, PAD=40;
-  const W=4*CELL+PAD*2, H=4*CELL+PAD*2;
+  // 다리가 다른 다리를 가로지르는지 확인하는 함수
+  const isPathBlocked = (n1, n2, currentBridges) => {
+    const rMin = Math.min(n1.r, n2.r), rMax = Math.max(n1.r, n2.r);
+    const cMin = Math.min(n1.c, n2.c), cMax = Math.max(n1.c, n2.c);
 
-  const countBridges = (br) => {
-    const counts = {}; BRIDGE_NODES.forEach(n => { counts[n.id]=0; });
-    BRIDGE_PAIRS.forEach(([a,z]) => { counts[a]+=br[`${a}-${z}`]; counts[z]+=br[`${a}-${z}`]; });
-    return counts;
+    for (const b of currentBridges) {
+      const b1 = islands.find(i => i.id === b.n1);
+      const b2 = islands.find(i => i.id === b.n2);
+      
+      const bRMin = Math.min(b1.r, b2.r), bRMax = Math.max(b1.r, b2.r);
+      const bCMin = Math.min(b1.c, b2.c), bCMax = Math.max(b1.c, b2.c);
+
+      // 현재 시도하는 다리가 가로인 경우
+      if (n1.r === n2.r) {
+        // 기존 다리가 세로이고 교차하는지 확인
+        if (b1.c === b2.c && b1.c > cMin && b1.c < cMax && rMin > bRMin && rMin < bRMax) return true;
+      } 
+      // 현재 시도하는 다리가 세로인 경우
+      else {
+        // 기존 다리가 가로이고 교차하는지 확인
+        if (b1.r === b2.r && b1.r > rMin && b1.r < rMax && cMin > bCMin && cMin < bCMax) return true;
+      }
+    }
+    return false;
   };
 
-  const toggleBridge = (a,z) => {
-    if (solved) return;
-    const key=`${a}-${z}`;
-    setBridges(prev => {
-      const next = { ...prev, [key]:(prev[key]+1)%3 };
-      const counts = countBridges(next);
-      if (BRIDGE_NODES.every(n => counts[n.id]===n.req)) { setSolved(true); setTimeout(() => onSolve(1), 800); }
-      return next;
+  const handleNodeClick = (nodeId) => {
+    if (selected === null) {
+      setSelected(nodeId);
+    } else if (selected === nodeId) {
+      setSelected(null);
+    } else {
+      const n1 = islands.find(n => n.id === selected);
+      const n2 = islands.find(n => n.id === nodeId);
+
+      if (n1.r === n2.r || n1.c === n2.c) {
+        const pair = [selected, nodeId].sort((a, b) => a - b).join("-");
+        
+        setBridges(prev => {
+          const existing = prev.find(b => b.pair === pair);
+          if (existing) {
+            if (existing.count === 2) return prev.filter(b => b.pair !== pair);
+            return prev.map(b => b.pair === pair ? { ...b, count: 2 } : b);
+          }
+          // 교차 체크
+          if (isPathBlocked(n1, n2, prev)) {
+            alert("다리가 겹칠 수 없습니다!");
+            return prev;
+          }
+          return [...prev, { pair, n1: selected, n2: nodeId, count: 1 }];
+        });
+      }
+      setSelected(null);
+    }
+  };
+
+  useEffect(() => {
+    if (bridges.length === 0) return;
+    const isCorrect = islands.every(node => {
+      const total = bridges.filter(b => b.n1 === node.id || b.n2 === node.id).reduce((sum, b) => sum + b.count, 0);
+      return total === node.count;
     });
-  };
-
-  const getPos = (id) => { const n=BRIDGE_NODES[id]; return { cx:PAD+n.x*CELL, cy:PAD+n.y*CELL }; };
+    if (isCorrect) setTimeout(() => onSolve(1), 500);
+  }, [bridges]);
 
   return (
-    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.92)", zIndex:200, display:"flex", alignItems:"center", justifyContent:"center", backdropFilter:"blur(8px)" }}>
-      <div style={{ background:"var(--surface)", border:"1px solid var(--border)", borderRadius:16, padding:"28px", position:"relative", animation:"modalIn 0.3s ease", textAlign:"center", maxWidth:"95vw" }}>
-        <button onClick={onClose} style={{ position:"absolute", top:14, right:14, background:"none", border:"none", color:"var(--text2)", cursor:"pointer", fontSize:20 }}>✕</button>
-        <div style={{ fontFamily:"var(--mono)", fontSize:10, color:"var(--accent)", letterSpacing:2, marginBottom:4 }}>PART 2 — QUIZ 8</div>
-        <h2 style={{ margin:"0 0 6px", fontSize:18, color:"#fff" }}>브릿지 퍼즐</h2>
-        <p style={{ fontFamily:"var(--mono)", fontSize:11, color:"var(--text2)", marginBottom:18 }}>
-          각 섬(숫자)에 표시된 수만큼 다리를 연결하세요. 클릭으로 다리 수 조절 (0 → 1 → 2 → 0)
-        </p>
-        <svg width={W} height={H} style={{ display:"block", margin:"0 auto" }}>
-          {/* 클릭 가능한 다리 영역 */}
-          {BRIDGE_PAIRS.map(([a,z]) => {
-            const pa=getPos(a), pz=getPos(z);
-            const cnt=bridges[`${a}-${z}`];
-            const isH=pa.cy===pz.cy;
-            const color=solved?"#00ff88":"#6c63ff";
-            const off=5;
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.95)", zIndex:200, display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <div style={{ background:"#1a1b2e", padding:30, borderRadius:20, textAlign:"center", border:"1px solid #333" }}>
+        <button onClick={onClose} style={{ float:"right", color:"#fff", background:"none", border:"none", cursor:"pointer" }}>✕</button>
+        <h2 style={{ color:"#fff", marginBottom:20 }}>브릿지 (5x5 그리드)</h2>
+        <div style={{ position:"relative", width:SIZE*CELL, height:SIZE*CELL, margin:"0 auto" }}>
+          {/* 가로세로 5줄 점 배경 */}
+          {/* {Array.from({length:25}).map((_, i) => (
+            <div key={i} style={{ position:"absolute", left:(i%5)*CELL+33, top:Math.floor(i/5)*CELL+33, width:4, height:4, background:"#2a2a40", borderRadius:"50%" }} />
+          ))} */}
+          <svg style={{ position:"absolute", inset:0, width:"100%", height:"100%" }}>
+            {bridges.map(b => {
+              const s = islands.find(n => n.id === b.n1);
+              const e = islands.find(n => n.id === b.n2);
+              const isHor = s.r === e.r;
+              return (
+                <g key={b.pair} stroke="cyan" strokeWidth={3}>
+                  <line x1={s.c*CELL+35} y1={s.r*CELL+35} x2={e.c*CELL+35} y2={e.r*CELL+35} />
+                  {b.count === 2 && (
+                    <line x1={s.c*CELL+35+(isHor?0:6)} y1={s.r*CELL+35+(isHor?6:0)} x2={e.c*CELL+35+(isHor?0:6)} y2={e.r*CELL+35+(isHor?6:0)} />
+                  )}
+                </g>
+              );
+            })}
+          </svg>
+          {islands.map(node => {
+            const total = bridges.filter(b => b.n1 === node.id || b.n2 === node.id).reduce((s, b) => s + b.count, 0);
             return (
-              <g key={`${a}-${z}`} onClick={() => toggleBridge(a,z)} style={{ cursor:"pointer" }}>
-                <line x1={pa.cx} y1={pa.cy} x2={pz.cx} y2={pz.cy} stroke="transparent" strokeWidth={20} />
-                {cnt>=1 && <line x1={pa.cx+(isH?0:-off)} y1={pa.cy+(isH?-off:0)} x2={pz.cx+(isH?0:-off)} y2={pz.cy+(isH?-off:0)} stroke={color} strokeWidth={2.5} opacity={0.9} />}
-                {cnt===2 && <line x1={pa.cx+(isH?0:off)} y1={pa.cy+(isH?off:0)} x2={pz.cx+(isH?0:off)} y2={pz.cy+(isH?off:0)} stroke={color} strokeWidth={2.5} opacity={0.9} />}
-              </g>
+              <div key={node.id} onClick={() => handleNodeClick(node.id)}
+                style={{
+                  position:"absolute", left:node.c*CELL+15, top:node.r*CELL+15, width:40, height:40, borderRadius:"50%",
+                  background:selected===node.id?"cyan":total===node.count?"#00ff88":"#1a1b2e",
+                  border:`2px solid ${total===node.count?"#00ff88":"cyan"}`,
+                  color:total===node.count?"#000":"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:900, cursor:"pointer", zIndex:10
+                }}>{node.count}</div>
             );
           })}
-          {/* 노드 */}
-          {BRIDGE_NODES.map(n => {
-            const { cx,cy } = getPos(n.id);
-            const counts = countBridges(bridges);
-            const full = counts[n.id]===n.req;
-            return (
-              <g key={n.id}>
-                <circle cx={cx} cy={cy} r={22} fill={full?"rgba(0,255,136,0.15)":"var(--surface2)"} stroke={full?"#00ff88":"var(--border)"} strokeWidth={2} />
-                <text x={cx} y={cy+5} textAnchor="middle" fill={full?"#00ff88":"#fff"} fontSize={16} fontWeight={800} fontFamily="monospace">{n.req}</text>
-              </g>
-            );
-          })}
-        </svg>
-        {solved && <div style={{ marginTop:16, fontFamily:"var(--mono)", fontSize:14, color:"var(--green)", padding:"10px 20px", background:"rgba(0,255,136,0.07)", borderRadius:8, border:"1px solid rgba(0,255,136,0.2)" }}>✅ 브릿지 완성!</div>}
-        <button onClick={() => setBridges(initBridges())} style={{ marginTop:14, fontFamily:"var(--mono)", fontSize:10, padding:"6px 18px", background:"transparent", border:"1px solid var(--border)", color:"var(--text2)", borderRadius:6, cursor:"pointer" }}>초기화</button>
+        </div>
       </div>
     </div>
   );
 }
 
 // ── 시가쿠 퍼즐 (5×5) ────────────────────────────────────────
-// 각 단서 숫자 = 해당 직사각형의 넓이
-// 드래그로 직사각형을 그려서 완성
-const SHIKAKU_CLUES = [
-  { r:0, c:0, val:6 },
-  { r:0, c:3, val:4 },
-  { r:2, c:1, val:2 },
-  { r:3, c:0, val:3 },
-  { r:3, c:3, val:6 },
-  { r:4, c:2, val:4 },
-];
+
 const SHIKAKU_COLORS = ["#6c63ff55","#00d4aa55","#ffd70055","#ff6b6b55","#00ff8855","#fd79a855"];
 const SGRID = 5;
-const SCELL = 66;
+const SCELL = 100;
 
-function ShikakuPuzzle({ onSolve, onClose }) {
+export function ShikakuPuzzle({ onSolve, onClose }) {
+  const { size, numbers } = SHIKAKU;
   const [rects, setRects] = useState([]);
   const [dragStart, setDragStart] = useState(null);
   const [dragCur, setDragCur] = useState(null);
-  const [solved, setSolved] = useState(false);
   const svgRef = useRef(null);
+  const CELL = 40;
 
-  const getCellFromEvent = (e) => {
-    const rect = svgRef.current.getBoundingClientRect();
-    const r = Math.floor((e.clientY - rect.top) / SCELL);
-    const c = Math.floor((e.clientX - rect.left) / SCELL);
-    return { r: Math.max(0,Math.min(SGRID-1,r)), c: Math.max(0,Math.min(SGRID-1,c)) };
+  const getCell = (e) => {
+    const b = svgRef.current.getBoundingClientRect();
+    const x = Math.floor((e.clientX - b.left) / CELL);
+    const y = Math.floor((e.clientY - b.top) / CELL);
+    return { x: Math.max(0, Math.min(size - 1, x)), y: Math.max(0, Math.min(size - 1, y)) };
   };
 
-  const getDragRect = (s, e) => {
-    if (!s||!e) return null;
-    return { r:Math.min(s.r,e.r), c:Math.min(s.c,e.c), w:Math.abs(s.c-e.c)+1, h:Math.abs(s.r-e.r)+1 };
+  // 되돌리기 기능: 마지막으로 추가된 사각형 제거
+  const handleUndo = () => {
+    setRects(prev => prev.slice(0, -1));
   };
 
-  const handleMouseDown = (e) => { const cell=getCellFromEvent(e); setDragStart(cell); setDragCur(cell); };
-  const handleMouseMove = (e) => { if(!dragStart) return; setDragCur(getCellFromEvent(e)); };
   const handleMouseUp = () => {
-    if (!dragStart || !dragCur) { setDragStart(null); setDragCur(null); return; }
-    const dr = getDragRect(dragStart, dragCur);
-    if (!dr) { setDragStart(null); setDragCur(null); return; }
-    const area = dr.w * dr.h;
-    // 이 직사각형 안에 포함된 단서
-    const inside = SHIKAKU_CLUES.filter(cl => cl.r>=dr.r && cl.r<dr.r+dr.h && cl.c>=dr.c && cl.c<dr.c+dr.w);
-    if (inside.length===1 && inside[0].val===area) {
-      const clue = inside[0];
-      const colorIdx = SHIKAKU_CLUES.indexOf(clue);
+    if (!dragStart || !dragCur) return;
+    const x1 = Math.min(dragStart.x, dragCur.x), x2 = Math.max(dragStart.x, dragCur.x);
+    const y1 = Math.min(dragStart.y, dragCur.y), y2 = Math.max(dragStart.y, dragCur.y);
+    const w = x2 - x1 + 1, h = y2 - y1 + 1;
+    const area = w * h;
+
+    const clues = numbers.filter(n => n.x >= x1 && n.x <= x2 && n.y >= y1 && n.y <= y2);
+    if (clues.length === 1 && clues[0].value === area) {
+      const clue = clues[0];
+      const newRect = { x: x1, y: y1, w, h, id: `${clue.x}-${clue.y}` };
       setRects(prev => {
-        // 같은 단서 영역 교체
-        const filtered = prev.filter(rect => {
-          const hasClue = SHIKAKU_CLUES.some(cl => cl.r===clue.r && cl.c===clue.c && cl.r>=rect.r && cl.r<rect.r+rect.h && cl.c>=rect.c && cl.c<rect.c+rect.w);
-          return !hasClue;
-        });
-        const next = [...filtered, { ...dr, color:SHIKAKU_COLORS[colorIdx] }];
-        // 전체 25칸 커버 검증
-        if (next.length===SHIKAKU_CLUES.length) {
-          const grid = Array.from({length:SGRID}, () => Array(SGRID).fill(0));
-          let ok = true;
-          next.forEach(rect => {
-            for(let rr=rect.r; rr<rect.r+rect.h; rr++)
-              for(let cc=rect.c; cc<rect.c+rect.w; cc++) { if(rr>=SGRID||cc>=SGRID){ok=false;return;} grid[rr][cc]++; }
-          });
-          if (ok && grid.every(row => row.every(v => v===1))) { setSolved(true); setTimeout(() => onSolve(2), 800); }
+        const next = [...prev.filter(r => r.id !== newRect.id), newRect];
+        if (next.reduce((acc, r) => acc + (r.w * r.h), 0) === size * size) {
+          setTimeout(() => onSolve(2), 500);
         }
         return next;
       });
@@ -627,48 +668,50 @@ function ShikakuPuzzle({ onSolve, onClose }) {
     setDragStart(null); setDragCur(null);
   };
 
-  const preview = dragStart && dragCur ? getDragRect(dragStart, dragCur) : null;
-
   return (
-    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.92)", zIndex:200, display:"flex", alignItems:"center", justifyContent:"center", backdropFilter:"blur(8px)" }}>
-      <div style={{ background:"var(--surface)", border:"1px solid var(--border)", borderRadius:16, padding:"28px", position:"relative", animation:"modalIn 0.3s ease", textAlign:"center", maxWidth:"95vw" }}>
-        <button onClick={onClose} style={{ position:"absolute", top:14, right:14, background:"none", border:"none", color:"var(--text2)", cursor:"pointer", fontSize:20 }}>✕</button>
-        <div style={{ fontFamily:"var(--mono)", fontSize:10, color:"var(--accent)", letterSpacing:2, marginBottom:4 }}>PART 2 — QUIZ 9</div>
-        <h2 style={{ margin:"0 0 6px", fontSize:18, color:"#fff" }}>시가쿠 퍼즐</h2>
-        <p style={{ fontFamily:"var(--mono)", fontSize:11, color:"var(--text2)", marginBottom:16 }}>
-          드래그로 직사각형을 그리세요. 각 직사각형의 넓이 = 단서 숫자. 모든 칸을 채우면 완성!
-        </p>
-        <svg ref={svgRef} width={SGRID*SCELL} height={SGRID*SCELL}
-          style={{ display:"block", margin:"0 auto", cursor:"crosshair", userSelect:"none", border:"1px solid var(--border)", borderRadius:8 }}
-          onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={() => { setDragStart(null); setDragCur(null); }}>
-          <rect width={SGRID*SCELL} height={SGRID*SCELL} fill="#0a0b14" />
-          {/* 완성된 직사각형 */}
-          {rects.map((rect,i) => (
-            <rect key={i} x={rect.c*SCELL+2} y={rect.r*SCELL+2} width={rect.w*SCELL-4} height={rect.h*SCELL-4}
-              fill={rect.color} stroke={rect.color.replace("55","cc")} strokeWidth={2} rx={4} />
-          ))}
-          {/* 드래그 미리보기 */}
-          {preview && (
-            <rect x={preview.c*SCELL+2} y={preview.r*SCELL+2} width={preview.w*SCELL-4} height={preview.h*SCELL-4}
-              fill="rgba(108,99,255,0.15)" stroke="rgba(108,99,255,0.6)" strokeWidth={1.5} strokeDasharray="4 2" rx={4} />
-          )}
-          {/* 그리드 선 */}
-          {Array.from({length:SGRID+1}).map((_,i) => (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.85)", zIndex:300, display:"flex", alignItems:"center", justifyContent:"center", backdropFilter:"blur(5px)" }}>
+      <div style={{ background:"#fff", padding:"30px", borderRadius:"8px", boxShadow:"0 10px 30px rgba(0,0,0,0.5)", textAlign:"center" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"20px" }}>
+          <h2 style={{ color:"#333", margin:0, fontSize:"20px" }}>시고쿠 (Shikaku)</h2>
+          <button onClick={onClose} style={{ background:"none", border:"none", fontSize:"24px", cursor:"pointer", color:"#999" }}>✕</button>
+        </div>
+        
+        <svg ref={svgRef} width={size*CELL} height={size*CELL} 
+            onMouseDown={(e)=> { const c=getCell(e); setDragStart(c); setDragCur(c); }}
+            onMouseMove={(e)=> { if(dragStart) setDragCur(getCell(e)); }}
+            onMouseUp={handleMouseUp}
+            style={{ border:"2px solid #333", display:"block", userSelect:"none", touchAction:"none", background: "#fff" }}>
+          
+          {Array.from({length: size + 1}).map((_, i) => (
             <g key={i}>
-              <line x1={i*SCELL} y1={0} x2={i*SCELL} y2={SGRID*SCELL} stroke="#2a2a40" strokeWidth={1} />
-              <line x1={0} y1={i*SCELL} x2={SGRID*SCELL} y2={i*SCELL} stroke="#2a2a40" strokeWidth={1} />
+              <line x1={i*CELL} y1={0} x2={i*CELL} y2={size*CELL} stroke="#ddd" strokeWidth="1" />
+              <line x1={0} y1={i*CELL} x2={size*CELL} y2={i*CELL} stroke="#ddd" strokeWidth="1" />
             </g>
           ))}
-          {/* 단서 숫자 */}
-          {SHIKAKU_CLUES.map((cl,i) => (
-            <text key={i} x={cl.c*SCELL+SCELL/2} y={cl.r*SCELL+SCELL/2+7} textAnchor="middle"
-              fill="#fff" fontSize={22} fontWeight={900} fontFamily="monospace" style={{ pointerEvents:"none" }}>
-              {cl.val}
+
+          {rects.map((r, i) => (
+            <rect key={i} x={r.x*CELL + 2} y={r.y*CELL + 2} width={r.w*CELL - 4} height={r.h*CELL - 4} 
+                  fill="rgba(108, 99, 255, 0.2)" stroke="#6c63ff" strokeWidth="3" rx="4" />
+          ))}
+
+          {dragStart && dragCur && (
+            <rect x={Math.min(dragStart.x, dragCur.x)*CELL} y={Math.min(dragStart.y, dragCur.y)*CELL}
+                  width={(Math.abs(dragCur.x-dragStart.x)+1)*CELL} height={(Math.abs(dragCur.y-dragStart.y)+1)*CELL}
+                  fill="rgba(0,0,0,0.05)" stroke="#333" strokeDasharray="5,5" />
+          )}
+
+          {numbers.map((n, i) => (
+            <text key={i} x={n.x*CELL + CELL/2} y={n.y*CELL + CELL/2 + 7} 
+                  textAnchor="middle" fontSize="18px" fontWeight="700" fill="#222" style={{ pointerEvents:"none" }}>
+              {n.value}
             </text>
           ))}
         </svg>
-        {solved && <div style={{ marginTop:14, fontFamily:"var(--mono)", fontSize:14, color:"var(--green)", padding:"10px 20px", background:"rgba(0,255,136,0.07)", borderRadius:8, border:"1px solid rgba(0,255,136,0.2)" }}>✅ 시가쿠 완성!</div>}
-        <button onClick={() => setRects([])} style={{ marginTop:14, fontFamily:"var(--mono)", fontSize:10, padding:"6px 18px", background:"transparent", border:"1px solid var(--border)", color:"var(--text2)", borderRadius:6, cursor:"pointer" }}>초기화</button>
+
+        <div style={{ marginTop:"20px", display:"flex", gap:"10px" }}>
+          <button onClick={handleUndo} style={{ flex:1, padding:"10px", background:"#eef2ff", border:"1px solid #6c63ff", color: "#6c63ff", borderRadius:"4px", cursor:"pointer", fontWeight: "bold" }}>↩ 되돌리기</button>
+          <button onClick={() => setRects([])} style={{ flex:1, padding:"10px", background:"#f0f0f0", border:"1px solid #ccc", borderRadius:"4px", cursor:"pointer" }}>전체 초기화</button>
+        </div>
       </div>
     </div>
   );
@@ -678,6 +721,9 @@ function ShikakuPuzzle({ onSolve, onClose }) {
 function Part2Screen({ myTeam, myTeamId, overrideTeam }) {
   const [activeP2, setActiveP2] = useState(null);
   const solvedP2 = myTeam.solvedP2 || [];
+  const { size, numbers } = SHIKAKU;
+  const [rects, setRects] = useState([]);
+  const [drawing, setDrawing] = useState(null);
 
   const handleSolveP2 = (roomId) => {
     const newSolved = Array.from(new Set([...solvedP2, roomId]));
@@ -713,8 +759,8 @@ function Part2Screen({ myTeam, myTeamId, overrideTeam }) {
         </div>
       </div>
       {activeP2===0 && <Q7Modal onClose={() => setActiveP2(null)} onSolve={handleSolveP2} />}
-      {activeP2===1 && <BridgePuzzle onClose={() => setActiveP2(null)} onSolve={handleSolveP2} />}
-      {activeP2===2 && <ShikakuPuzzle onClose={() => setActiveP2(null)} onSolve={handleSolveP2} />}
+      {activeP2 === 1 && <BridgeGame onClose={() => setActiveP2(null)} onSolve={handleSolveP2} />}
+      {activeP2 === 2 && <ShikakuPuzzle onClose={() => setActiveP2(null)} onSolve={handleSolveP2} />}
     </div>
   );
 }
@@ -784,9 +830,28 @@ export default function ClientApp() {
     setMyTeamId(teamId);
   };
 
-  const handleRoomClick = (id) => {
+const handleRoomClick = (id) => {
     if (!myTeam) return;
-    if ((myTeam.roomsDone||[]).includes(id)) { setToast("이미 클리어한 방입니다."); return; }
+
+    // 1. 이미 푼 방인지 확인
+    if ((myTeam.roomsDone || []).includes(id)) {
+      setToast("이미 클리어한 방입니다.");
+      return;
+    }
+
+    // 2. 특정 방 페널티 확인 (해당 문제만 차단)
+    const roomPenalties = myTeam.roomPenalties || {};
+    const penaltyUntil = roomPenalties[id];
+    
+    if (penaltyUntil && Date.now() < penaltyUntil) {
+      const remain = Math.ceil((penaltyUntil - Date.now()) / 1000);
+      setToast(`⚠️ 시도 제한! ${remain}초 후 다시 가능합니다.`);
+      
+      // 2초 뒤에 메시지 사라지게 처리 (이미 Toast 컴포넌트에 onDone이 있다면 연동)
+      setTimeout(() => setToast(null), 2000); 
+      return;
+    }
+
     setActiveRoomId(id);
   };
 
@@ -809,6 +874,7 @@ export default function ClientApp() {
     </div>
   );
 
+  
   if (showAirRaid) return <AirRaidAlert onDone={() => { setShowAirRaid(false); setInPart2(true); setWaitingForPart2(false); }} />;
 
   if (inPart2 || myTeam.phase2) return <Part2Screen myTeam={myTeam} myTeamId={myTeamId} overrideTeam={overrideTeam} />;
@@ -819,7 +885,7 @@ export default function ClientApp() {
     <div style={{ display:"flex", flexDirection:"column", height:"100vh", background:"var(--bg)" }}>
       <Header timerSec={state?.timerSec||0} timerRunning={state?.timerRunning||false} isAdmin={false} onToggleTimer={() => setTimerRunning(!state.timerRunning)} onStart1550={startTimerToTarget} />
       <div style={{ display:"grid", gridTemplateColumns:"300px 1fr", flex:1, overflow:"hidden" }}>
-        <Leaderboard teams={safeTeams} myTeamId={myTeamId} />
+        <Leaderboard teams={Object.values(state.teams)} myTeamId={myTeam.id} />
         <div style={{ display:"flex", flexDirection:"column", overflowY:"auto", background:"var(--bg)", position:"relative" }}>
           <GridBg />
           <div style={{ position:"relative", zIndex:1, padding:"18px 24px", display:"flex", flexDirection:"column", gap:14 }}>
@@ -844,9 +910,20 @@ export default function ClientApp() {
           </div>
         </div>
       </div>
-      {activeRoomId!==null && ROOMS_DATA[activeRoomId] && (
-        <ProblemModal room={ROOMS_DATA[activeRoomId]} onClose={() => setActiveRoomId(null)} onSolve={handleSolve} />
+      {activeRoomId !== null && ROOMS_DATA[activeRoomId] && (
+        <ProblemModal 
+          room={ROOMS_DATA[activeRoomId]} 
+          onClose={() => setActiveRoomId(null)} 
+          onSolve={handleSolve}
+          myTeam={myTeam}
+          myTeamId={myTeamId}
+          overrideTeam={overrideTeam}
+          setToast={setToast} // Toast 함수 전달
+        />
       )}
+      
+      {/* Toast 컴포넌트가 2초 뒤에 null로 변하도록 설정 */}
+      {toast && <Toast msg={toast} onDone={() => setToast(null)} duration={2000} />}
       {celebration && <Celebration room={celebration.room} pts={celebration.pts} totalScore={celebration.total} onClose={() => setCelebration(null)} />}
       {toast && <Toast msg={toast} onDone={() => setToast(null)} />}
       <GridBg />
