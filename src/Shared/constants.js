@@ -44,10 +44,10 @@ export const ROOMS_DATA = [
       mid: { text: "000+000", image: null },
       advanced: { text: null, image: "Hint5-3.png" }
     } },
-  { id:5, label:"6번 문제", icon:"🎯", topic:"난이도 중",   points:0, image:"/Q6.png", answer:"3U", pw:"6", hints: {
-      basic: { text: null, image: "Hint6-1.png" },
-      mid: { text: "\"모든 버튼\"", image: null },
-      advanced: { text: "거꾸로 가기", image: null }
+  { id:5, label:"6번 문제", icon:"🎯", topic:"난이도 중",   points:0, image:"/Q6.png", answer:"3001-2791=210", pw:"6", hints: {
+      basic: { text: "수식에는 숫자만 들어갈 수 있습니다.", image: null },
+      mid: { text: null, image: "Hint6-2.png" },
+      advanced: { text: "3001-210=2791", image: null }
     } },
 ];
 
