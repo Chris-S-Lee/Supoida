@@ -2,8 +2,9 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { 
   TOTAL_TIME, CONFETTI_COLORS, SESSION_KEY, TEAM_NAMES, INIT_TEAMS, 
   ROOMS_DATA, CORRIDORS, NICKNAMES, GLOBAL_CSS, formatTime, pad,
-  BRIDGE_PUZZLE_DATA, // constants.js에서 불러옴
-  SHIKAKU       // constants.js에서 불러옴
+  BRIDGE_PUZZLE_DATA, 
+  SHIKAKU,
+  PUZZLE_EXPLANATIONS 
 } from "../shared/constants.js";
 import { Header, Leaderboard, Toast, GridBg } from "../shared/components.jsx";
 import { useSharedStore } from "../shared/store.js";
@@ -132,21 +133,23 @@ function PasswordPanel({ solvedRooms, teamColor, onAllCorrect, teamId, onOverrid
   const [inputCode, setInputCode] = useState("");
   const [status, setStatus] = useState("idle");
 
-  // --- 3분 제한 로직 (최종 비밀번호 오답 시) ---
-  const [penaltyEnd, setPenaltyEnd] = useState(Number(localStorage.getItem(`penalty_${teamId}`)) || 0);
+  // --- 3분 입력 제한 로직 (최종 비밀번호 오답 시) ---
+  // localStorage 대신 DB 상태를 기준으로 하거나 로컬 상태를 사용하되, 접근 차단은 하지 않음
+  const [pwPenaltyEnd, setPwPenaltyEnd] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
 
   useEffect(() => {
     const timer = setInterval(() => {
-      const remaining = Math.max(0, Math.ceil((penaltyEnd - Date.now()) / 1000));
+      const now = Date.now();
+      const remaining = Math.max(0, Math.ceil((pwPenaltyEnd - now) / 1000));
       setTimeLeft(remaining);
     }, 1000);
     return () => clearInterval(timer);
-  }, [penaltyEnd]);
+  }, [pwPenaltyEnd]);
 
   const digits = ROOMS_DATA.map(room => ({ digit: room.pw, revealed: solvedRooms.includes(room.id), room }));
   const allRevealed = digits.every(d => d.revealed);
-  const CORRECT_CODE = ROOMS_DATA.map(r => r.pw).join(""); // 정답 코드 생성
+  const CORRECT_CODE = ROOMS_DATA.map(r => r.pw).join("");
 
   const handleInputChange = (e) => {
     if (timeLeft > 0) return; 
@@ -157,23 +160,23 @@ function PasswordPanel({ solvedRooms, teamColor, onAllCorrect, teamId, onOverrid
   const handleSubmit = () => {
     if (status === "correct" || timeLeft > 0) return;
 
-    // 최종 비밀번호 6자리 비교
     if (inputCode === CORRECT_CODE) {
       setStatus("correct");
+      // ✅ 1번 문제 해결: 관리자에게 파트 1 완료 알림 전달
+      onOverride(teamId, { isPart1Finished: true }); 
       setTimeout(() => {
-        onAllCorrect(); // 파트 2 대기 화면으로 이동
+        onAllCorrect(); 
       }, 1000);
     } else {
-      // ❌ 틀렸을 때: 3분(180초) 페널티 부여
-      const newPenaltyEnd = Date.now() + 180000;
-      setPenaltyEnd(newPenaltyEnd);
-      localStorage.setItem(`penalty_${teamId}`, String(newPenaltyEnd));
-      
+      // ✅ 2번 문제 해결: freezeUntil(전체차단) 대신 로컬 페널티(입력차단)만 부여
+      const penaltyDuration = 180000; // 3분
+      setPwPenaltyEnd(Date.now() + penaltyDuration);
       setStatus("wrong");
-      // 메인 스토어의 팀 데이터도 업데이트 (필요 시)
-      onOverride(teamId, { freezeUntil: newPenaltyEnd });
+      
+      // 사용자 경험을 위해 Toast로 알림
+      if(setToast) setToast("❌ 비밀번호가 틀렸습니다. 3분간 입력이 제한됩니다.");
     }
-  };  
+  };
 
   const color = teamColor || "var(--accent2)";
 
@@ -253,11 +256,11 @@ function WaitingScreen({ teamName, teamColor }) {
       </div>
       <div style={{ zIndex:1, textAlign:"center" }}>
         <div style={{ fontFamily:"var(--mono)", fontSize:22, fontWeight:800, color:teamColor||"var(--accent)", marginBottom:8 }}>{teamName} 팀</div>
-        <div style={{ fontFamily:"var(--mono)", fontSize:16, color:"#fff", marginBottom:6 }}>파트 1 완료! 🎉</div>
+        <div style={{ fontFamily:"var(--mono)", fontSize:16, color:"#fff", marginBottom:6 }}>비밀번호 해제 성공! 🎉</div>
         <div style={{ fontFamily:"var(--mono)", fontSize:13, color:"var(--text2)", animation:"pulse2 1.5s infinite" }}>팀원이 올라오길 기다리는 중{dots}</div>
       </div>
       <div style={{ zIndex:1, background:"rgba(108,99,255,0.08)", border:"1px solid rgba(108,99,255,0.25)", borderRadius:10, padding:"12px 28px", fontFamily:"var(--mono)", fontSize:11, color:"var(--text2)", textAlign:"center", lineHeight:1.8 }}>
-        자리에서 대기해 주세요.
+        자리에서 대기해 주세요
       </div>
     </div>
   );
@@ -266,26 +269,40 @@ function WaitingScreen({ teamName, teamColor }) {
 // ── AirRaidAlert ───────────────────────────────────────────────
 function AirRaidAlert({ onDone }) {
   const [phase, setPhase] = useState(0);
+
   useEffect(() => {
+    // 배경이 빨간색에서 검은색으로 변하는 연출만 남깁니다.
     const t1 = setTimeout(() => setPhase(1), 1200);
-    const t2 = setTimeout(() => setPhase(2), 3500);
-    const t3 = setTimeout(() => onDone(), 4000);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
-  }, [onDone]);
+    return () => clearTimeout(t1);
+  }, []);
+
   return (
     <div style={{ position:"fixed", inset:0, zIndex:9999, background:phase===0?"#ff0000":"#0a0b14", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", transition:"background 0.4s" }}>
-      <style>{`@keyframes sirenText{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.8;transform:scale(1.04)}} @keyframes raidIn{from{opacity:0;transform:scale(0.7) translateY(30px)}to{opacity:1;transform:scale(1) translateY(0)}} @keyframes alertStrobe{0%,100%{opacity:1}45%{opacity:1}50%{opacity:0.2}55%{opacity:1}}`}</style>
+      <style>{`@keyframes sirenText{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.8;transform:scale(1.04)}} @keyframes raidIn{from{opacity:0;transform:scale(0.7) translateY(30px)}to{opacity:1;transform:scale(1) translateY(0)}}`}</style>
+      
       {phase === 0 && (
         <div style={{ textAlign:"center", animation:"sirenText 0.5s infinite" }}>
           <div style={{ fontSize:80 }}>🚨</div>
-          <div style={{ fontFamily:"var(--mono)", fontSize:40, fontWeight:900, color:"#fff", letterSpacing:8, marginTop:10 }}>경보!</div>
+          <div style={{ fontFamily:"var(--mono)", fontSize:40, fontWeight:900, color:"#fff", letterSpacing:8, marginTop:10 }}>공습 경보!</div>
         </div>
       )}
+
       {phase >= 1 && (
-        <div style={{ textAlign:"center", animation:"raidIn 0.5s cubic-bezier(0.34,1.56,0.64,1)" }}>
-          <div style={{ fontSize:72, marginBottom:16, animation:"alertStrobe 1s infinite" }}>⚠️</div>
-          <div style={{ fontFamily:"var(--mono)", fontSize:36, fontWeight:900, color:"#ff4d4d", letterSpacing:6, marginBottom:12 }}>공습 경보</div>
-          <div style={{ fontFamily:"var(--mono)", fontSize:18, color:"var(--text2)", letterSpacing:2 }}>PART 2 START</div>
+        <div style={{ textAlign:"center", animation:"raidIn 0.5s ease-out" }}>
+          <div style={{ fontSize:72, marginBottom:16 }}>⚠️</div>
+          <div style={{ fontFamily:"var(--mono)", fontSize:30, fontWeight:900, color:"#ff4d4d", letterSpacing:4, marginBottom:12 }}>모 소좌를 피해 문제를 풀어 북한을 탈출하십시오!</div>
+          <div style={{ fontFamily:"var(--mono)", fontSize:16, color:"var(--text2)", marginBottom:30 }}>PART 2 미션이 시작되었습니다.</div>
+          
+          {/* 클릭해야 넘어가는 버튼 추가 */}
+          <button 
+            onClick={onDone}
+            style={{
+              padding: "15px 40px", background: "#ff4d4d", color: "#fff", border: "none", borderRadius: "8px",
+              fontSize: "20px", fontWeight: "bold", cursor: "pointer", boxShadow: "0 0 20px rgba(255,77,77,0.4)"
+            }}
+          >
+            임무 시작하기 ➔
+          </button>
         </div>
       )}
     </div>
@@ -426,14 +443,58 @@ function HintToast({ hint, onClear }) {
   );
 }
 
+function PuzzleHelp({ type, onClose }) {
+  // 1. 데이터가 아예 없는 경우를 대비해 기본값([]) 설정
+  const explanation = PUZZLE_EXPLANATIONS?.[type] || [];
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)",
+      display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000, padding: 20
+    }}>
+      <div style={{
+        background: "var(--surface)", border: "1px solid var(--border)",
+        borderRadius: 12, padding: 24, maxWidth: 500, width: "100%", position: "relative"
+      }}>
+        <button onClick={onClose} style={{
+          position: "absolute", top: 16, right: 16, background: "none", border: "none",
+          color: "var(--text2)", fontSize: 24, cursor: "pointer"
+        }}>×</button>
+        
+        <h2 style={{ marginTop: 0, color: "var(--accent)", fontSize: 20 }}>퍼즐 도움말</h2>
+        
+        <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+          {/* 2. explanation이 배열인지 확인 후 map 실행 */}
+          {explanation.length > 0 ? (
+            explanation.map((step, i) => (
+              <div key={i} style={{ display: "flex", gap: 12 }}>
+                <div style={{
+                  width: 24, height: 24, borderRadius: "50%", background: "var(--accent)",
+                  color: "#000", display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 12, fontWeight: 800, flexShrink: 0
+                }}>{i + 1}</div>
+                <div style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
+                  {step}
+                </div>
+              </div>
+            ))
+          ) : (
+            <div style={{ color: "var(--text2)" }}>도움말 정보를 불러올 수 없습니다. (Type: {type})</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ══════════════════════════════════════════════════════════════
 //  PART 2
 // ══════════════════════════════════════════════════════════════
 
 const PART2_ROOMS = [
   { id:0, label:"7번 문제", icon:"🎯", topic:"이미지 문제" },
-  { id:1, label:"8번 문제 — 브릿지", icon:"🌉", topic:"브릿지 퍼즐" },
-  { id:2, label:"9번 문제 — 시가쿠", icon:"🔷", topic:"시가쿠 퍼즐" },
+  { id:1, label:"8번 문제", icon:"🎯", topic:"브릿지 퍼즐" },
+  { id:2, label:"9번 문제", icon:"🎯", topic:"시가쿠 퍼즐" },
 ];
 
 function Part2RoomGrid({ solvedP2, onRoomClick, teamColor }) {
@@ -465,8 +526,7 @@ function Q7Modal({ onClose, onSolve }) {
   const [answer, setAnswer] = useState("");
   const [status, setStatus] = useState("idle");
   const inputRef = useRef(null);
-  // ★ Q7 정답은 여기서 설정하세요
-  const Q7_ANSWER = "";
+  const Q7_ANSWER = "3U";
 
   useEffect(() => { setTimeout(() => inputRef.current?.focus(), 300); }, []);
 
@@ -507,6 +567,7 @@ function Q7Modal({ onClose, onSolve }) {
 export function BridgeGame({ onSolve, onClose }) {
   const [bridges, setBridges] = useState([]); 
   const [selected, setSelected] = useState(null);
+  const [showHelp, setShowHelp] = useState(false);
   const SIZE = 7;
   const CELL = 50; // 간격을 충분히 넓힘
 
@@ -580,8 +641,12 @@ export function BridgeGame({ onSolve, onClose }) {
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.95)", zIndex:200, display:"flex", alignItems:"center", justifyContent:"center" }}>
       <div style={{ background:"#1a1b2e", padding:30, borderRadius:20, textAlign:"center", border:"1px solid #333" }}>
+        {showHelp && <PuzzleHelp type="BRIDGE" onClose={() => setShowHelp(false)} />}        
+        <div style={{ display: "flex", justifyContent: "space-between", padding: "0 10px" }}>
+          <button onClick={() => setShowHelp(true)} style={{ cursor: "pointer" }}>도움말</button>
+        </div>
         <button onClick={onClose} style={{ float:"right", color:"#fff", background:"none", border:"none", cursor:"pointer" }}>✕</button>
-        <h2 style={{ color:"#fff", marginBottom:20 }}>브릿지 (5x5 그리드)</h2>
+        <h2 style={{ color:"#fff", marginBottom:20 }}>브릿지 (Bridge)</h2>
         <div style={{ position:"relative", width:SIZE*CELL, height:SIZE*CELL, margin:"0 auto" }}>
           {/* 가로세로 5줄 점 배경 */}
           {/* {Array.from({length:25}).map((_, i) => (
@@ -631,6 +696,7 @@ export function ShikakuPuzzle({ onSolve, onClose }) {
   const [rects, setRects] = useState([]);
   const [dragStart, setDragStart] = useState(null);
   const [dragCur, setDragCur] = useState(null);
+  const [showHelp, setShowHelp] = useState(false);
   const svgRef = useRef(null);
   const CELL = 40;
 
@@ -670,9 +736,14 @@ export function ShikakuPuzzle({ onSolve, onClose }) {
 
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.85)", zIndex:300, display:"flex", alignItems:"center", justifyContent:"center", backdropFilter:"blur(5px)" }}>
-      <div style={{ background:"#fff", padding:"30px", borderRadius:"8px", boxShadow:"0 10px 30px rgba(0,0,0,0.5)", textAlign:"center" }}>
+      <div style={{ background:" #1a1b2e", padding:"30px", borderRadius:"8px", boxShadow:"0 10px 30px rgba(0,0,0,0.5)", textAlign:"center" }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"20px" }}>
-          <h2 style={{ color:"#333", margin:0, fontSize:"20px" }}>시고쿠 (Shikaku)</h2>
+          {showHelp && <PuzzleHelp type="SHIKAKU" onClose={() => setShowHelp(false)} />}
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
+            <button onClick={() => setShowHelp(true)}>도움말</button>
+          </div>
+          <h2 style={{ color:"#fff", margin:0, fontSize:"20px" }}>시가쿠 (Shikaku)</h2>
+          
           <button onClick={onClose} style={{ background:"none", border:"none", fontSize:"24px", cursor:"pointer", color:"#999" }}>✕</button>
         </div>
         
@@ -680,7 +751,7 @@ export function ShikakuPuzzle({ onSolve, onClose }) {
             onMouseDown={(e)=> { const c=getCell(e); setDragStart(c); setDragCur(c); }}
             onMouseMove={(e)=> { if(dragStart) setDragCur(getCell(e)); }}
             onMouseUp={handleMouseUp}
-            style={{ border:"2px solid #333", display:"block", userSelect:"none", touchAction:"none", background: "#fff" }}>
+            style={{ border:"2px solid #333", display:"block", userSelect:"none", touchAction:"none", background: "#757790" }}>
           
           {Array.from({length: size + 1}).map((_, i) => (
             <g key={i}>
@@ -752,8 +823,8 @@ function Part2Screen({ myTeam, myTeamId, overrideTeam }) {
           {allDone && (
             <div style={{ marginTop:28, padding:"22px", background:"rgba(0,255,136,0.06)", border:"1px solid rgba(0,255,136,0.3)", borderRadius:12, textAlign:"center" }}>
               <div style={{ fontSize:36, marginBottom:10 }}>🏆</div>
-              <div style={{ fontFamily:"var(--mono)", fontSize:18, fontWeight:900, color:"var(--green)", letterSpacing:4 }}>PART 2 완료!</div>
-              <div style={{ fontFamily:"var(--mono)", fontSize:12, color:"var(--text2)", marginTop:8 }}>매니저에게 알려주세요</div>
+              <div style={{ fontFamily:"var(--mono)", fontSize:18, fontWeight:900, color:"var(--green)", letterSpacing:4 }}>PART 2 탈출 성공!</div>
+              <div style={{ fontFamily:"var(--mono)", fontSize:12, color:"var(--text2)", marginTop:8 }}>수뽀이다 멤버에게 알려주세요</div>
             </div>
           )}
         </div>
@@ -805,12 +876,18 @@ export default function ClientApp() {
   useEffect(() => {
     if (!myTeam) return;
     const isPhase2 = Boolean(myTeam.phase2);
-    if (isPhase2 && !prevPhase2.current) {
+    
+    // 조건 추가: phase2가 활성화되었고, 이전에 보지 않았으며, '현재 파트2 화면이 아닐 때'만 경보 실행
+    if (isPhase2 && !prevPhase2.current && !inPart2) {
       prevPhase2.current = true;
       setShowAirRaid(true);
     }
-    if (!isPhase2) prevPhase2.current = false;
-  }, [myTeam?.phase2]); // eslint-disable-line
+    
+    if (!isPhase2) {
+      prevPhase2.current = false;
+      setInPart2(false); // 관리자가 파트1로 되돌릴 경우를 대비
+    }
+  }, [myTeam?.phase2, inPart2]); // inPart2 의존성 추가
 
   const handleSolve = useCallback((room, pts) => {
     if (!state) return;
@@ -875,10 +952,26 @@ const handleRoomClick = (id) => {
   );
 
   
-  if (showAirRaid) return <AirRaidAlert onDone={() => { setShowAirRaid(false); setInPart2(true); setWaitingForPart2(false); }} />;
+  // 1. 공습경보 애니메이션을 최우선으로 렌더링 (다른 모든 화면을 덮음)
+  if (showAirRaid) {
+    return (
+      <AirRaidAlert 
+        onDone={() => { 
+          setShowAirRaid(false); 
+          setInPart2(true); 
+          setWaitingForPart2(false); 
+        }} 
+      />
+    );
+  }
 
-  if (inPart2 || myTeam.phase2) return <Part2Screen myTeam={myTeam} myTeamId={myTeamId} overrideTeam={overrideTeam} />;
+  // 2. 애니메이션이 끝났거나 이미 진입한 경우에만 파트 2 화면을 보여줌
+  // showAirRaid가 false일 때만 이 조건이 실행되므로 화면 겹침이나 지연이 사라집니다.
+  if (inPart2 || (myTeam && myTeam.phase2 && !showAirRaid)) {
+    return <Part2Screen myTeam={myTeam} myTeamId={myTeamId} overrideTeam={overrideTeam} />;
+  }
 
+  // 3. 파트 1 대기 화면
   if (waitingForPart2) return <WaitingScreen teamName={myTeam.name} teamColor={myTeam.color} />;
 
   return (

@@ -195,7 +195,7 @@ export function Leaderboard({ teams, myTeamId = null }) {
                 textAlign: "right", minWidth: 45 
               }}>
                 {/* X/9 또는 X/7 형식 표시 */}
-                {solvedCount}/{currentTotal}
+                {solvedCount}/6
               </div>
             </div>
           );

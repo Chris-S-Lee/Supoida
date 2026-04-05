@@ -55,7 +55,7 @@ function AdminActionPanel({ team, onOverride, setToast }) {
               onOverride(team.id, { phase2: false });
           } else {
             if (window.confirm(`${team.name} 팀에게 공습경보를 발동하고 파트2를 시작하시겠습니까?`))
-              onOverride(team.id, { phase2: true });
+              onOverride(team.id, { phase2: true, currentRoom: 99, isPart1Finished: true, });
           }
         }}
       >

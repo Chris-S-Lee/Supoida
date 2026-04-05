@@ -52,12 +52,29 @@ export const ROOMS_DATA = [
     } },
 ];
 
+
 export const CORRIDORS = [];
+
+export const PUZZLE_EXPLANATIONS  = {
+  BRIDGE: [
+    "모든 섬을 다리로 연결하여 하나로 이어야 합니다.",
+    "섬의 숫자는 해당 섬에 연결된 다리의 개수입니다.",
+    "다리는 가로/세로로만 가능하며, 최대 2줄까지 긋습니다.",
+    "다리끼리 서로 교차할 수 없습니다."
+  ],
+  SHIKAKU: [
+    "판을 여러 개의 직사각형(또는 정사각형)으로 나눕니다.",
+    "각 사각형 안에는 반드시 숫자 하나가 포함되어야 합니다.",
+    "사각형의 넓이(칸 수)는 숫자와 같아야 합니다.",
+    "모든 칸을 채워야 하며 사각형은 겹칠 수 없습니다."
+  ]
+};
 
 // ── 브릿지 퍼즐 데이터 (7x7 그리드 확장) ──
 // 이미지의 복잡한 연결 구조를 반영하여 7x7 그리드에 섬을 배치했습니다.
 // 모든 섬은 하나의 네트워크로 연결되며 다리가 서로 교차하지 않습니다.
 export const BRIDGE_PUZZLE_DATA = {
+  title: "브릿지 퍼즐 (Hashiwokakero)",
   islands: [
     // row 0
     { id: 0, r: 0, c: 0, count: 2 },
@@ -100,10 +117,10 @@ export const BRIDGE_PUZZLE_DATA = {
 };
 
 // ── 시가쿠 퍼즐 데이터 (10x10) ──
-// 보내주신 이미지처럼 작은 숫자(1~6)를 조밀하게 배치하여 
 // 100칸 전체를 빈틈없이 채우는 고난도 구성입니다.
 export const SHIKAKU = {
   size: 10,
+  title: "시가쿠 퍼즐 (Shikaku)",
   numbers: [
     { x: 4, y: 0, value: 5 },{ x: 9, y: 0, value: 2 },
     { x: 5, y: 1, value: 4 },

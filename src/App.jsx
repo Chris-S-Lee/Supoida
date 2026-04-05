@@ -10,7 +10,7 @@ export default function App() {
   const isManager = params.get("view") === "manager";
 
   const [introState, setIntroState] = useState(isManager ? "end" : "button");
-
+  
   useEffect(() => {
     const handleKeyDown = (e) => {
       const forbiddenKeys = ["F11", "Escape", "Meta", "Control", "Alt", "Tab"];
@@ -89,7 +89,7 @@ export default function App() {
               width="100%"
               height="100%"
               /* vq=hd1080(고화질), autoplay=1(자동재생), mute=0(소리있음), controls=1(유튜브재생버튼활성화) */
-              src="https://www.youtube.com/embed/E3PXkwLi0F4?autoplay=1&mute=0&controls=1&rel=0&modestbranding=1&vq=hd1080&enablejsapi=1"
+              src="https://www.youtube.com/embed/dLSkLGODgrY?autoplay=1&mute=0&controls=1&rel=0&modestbranding=1&vq=hd1080&enablejsapi=1"
               title="Intro Video"
               frameBorder="0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
