@@ -332,7 +332,7 @@ function ProblemModal({ room, onClose, onSolve }) {
 
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.85)", zIndex:100, display:"flex", alignItems:"center", justifyContent:"center", backdropFilter:"blur(4px)" }}>
-      <div style={{ background:"var(--surface)", border:"1px solid var(--border)", borderRadius:12, width:660, maxWidth:"95vw", maxHeight:"90vh", overflowY:"auto", padding:"32px 36px", position:"relative", animation:"modalIn 0.3s cubic-bezier(0.4,0,0.2,1)" }}>
+      <div style={{ background:"var(--surface)", border:"1px solid var(--border)", borderRadius:12, width:800, height: 600, maxWidth:"95vw", maxHeight:"90vh", overflowY:"auto", padding:"32px 36px", position:"relative", animation:"modalIn 0.3s cubic-bezier(0.4,0,0.2,1)" }}>
         <button onClick={onClose} style={{ position:"absolute", top:18, right:20, background:"none", border:"1px solid var(--border)", color:"var(--text2)", width:30, height:30, borderRadius:4, cursor:"pointer", fontSize:14, display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
 
         <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:20 }}>
