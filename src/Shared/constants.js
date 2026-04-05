@@ -20,34 +20,34 @@ export const INIT_TEAMS = TEAM_NAMES.map((name, i) => ({
 
 export const ROOMS_DATA = [
   { id:0, label:"1번 문제", icon:"🎯", topic:"난이도 하", points:0, image:"/Q1.png", answer:"4914", pw:"1", hints: {
-      basic: { text: "첫 번째 단계: 도형의 각을 모두 더해보세요.", image: "/Q8.png" },
-      mid: { text: "두 번째 단계: 외각의 성질을 이용하면 더 쉽습니다.", image: null },
-      advanced: { text: "마지막 단계: 180도에서 75도를 빼보세요.", image: null }
+      basic: { text: "5 X 5 = 25", image: null },
+      mid: { text: "구구단", image: null },
+      advanced: { text: "1 + 1 = 21", image: null }
     }},
   { id:1, label:"2번 문제", icon:"🎯", topic:"난이도 중", points:0, image:"/Q2.png", answer:"13", pw:"2", hints: {
-      basic: { text: "첫 번째 단계: 도형의 각을 모두 더해보세요.", image: null },
-      mid: { text: "두 번째 단계: 외각의 성질을 이용하면 더 쉽습니다.", image: null },
-      advanced: { text: "마지막 단계: 180도에서 75도를 빼보세요.", image: null }
+      basic: { text: "마지막 가로줄은 세로줄의 합", image: null },
+      mid: { text: "치환", image: null },
+      advanced: { text: "▲ = 4", image: null }
     }},
   { id:2, label:"3번 문제", icon:"🎯", topic:"난이도 상",   points:0, image:"/Q3.png", answer:"-252", pw:"3", hints: {
-      basic: { text: "첫 번째 단계: 도형의 각을 모두 더해보세요.", image: null },
-      mid: { text: "두 번째 단계: 외각의 성질을 이용하면 더 쉽습니다.", image: null },
-      advanced: { text: "마지막 단계: 180도에서 75도를 빼보세요.", image: null }
+      basic: { text: null, image: "Hint3-1.png" },
+      mid: { text: null, image: "Hint3-2.png" },
+      advanced: { text: null, image: "Hint3-3.png" },
     }},
   { id:3, label:"4번 문제", icon:"🎯", topic:"난이도 하",   points:0, image:"/Q4.png", answer:"수요일", pw:"4", hints: {
-      basic: { text: "첫 번째 단계: 도형의 각을 모두 더해보세요.", image: null },
-      mid: { text: "두 번째 단계: 외각의 성질을 이용하면 더 쉽습니다.", image: null },
-      advanced: { text: "마지막 단계: 180도에서 75도를 빼보세요.", image: null }
+      basic: { text: null, image: "Hint4-1.png" },
+      mid: { text: "치환", image: null },
+      advanced: { text: "5월", image: null }
     } },
-  { id:4, label:"5번 문제", icon:"🎯", topic:"난이도 중", points:0, image:"/Q5.png", answer:"6", pw:"5", hints: {
-      basic: { text: "첫 번째 단계: 도형의 각을 모두 더해보세요.", image: null },
-      mid: { text: "두 번째 단계: 외각의 성질을 이용하면 더 쉽습니다.", image: null },
-      advanced: { text: "마지막 단계: 180도에서 75도를 빼보세요.", image: null }
+  { id:4, label:"5번 문제", icon:"🎯", topic:"난이도 상", points:0, image:"/Q5.png", answer:"6", pw:"5", hints: {
+      basic: { text: "987654321", image: null },
+      mid: { text: "000+000", image: null },
+      advanced: { text: null, image: "Hint5-3.png" }
     } },
-  { id:5, label:"6번 문제", icon:"🎯", topic:"난이도 상",   points:0, image:"/Q6.png", answer:"3U", pw:"6", hints: {
-      basic: { text: "첫 번째 단계: 도형의 각을 모두 더해보세요.", image: null },
-      mid: { text: "두 번째 단계: 외각의 성질을 이용하면 더 쉽습니다.", image: null },
-      advanced: { text: "마지막 단계: 180도에서 75도를 빼보세요.", image: null }
+  { id:5, label:"6번 문제", icon:"🎯", topic:"난이도 중",   points:0, image:"/Q6.png", answer:"3U", pw:"6", hints: {
+      basic: { text: null, image: "Hint6-1.png" },
+      mid: { text: "\"모든 버튼\"", image: null },
+      advanced: { text: "거꾸로 가기", image: null }
     } },
 ];
 
